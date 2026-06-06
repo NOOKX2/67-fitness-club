@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { RunningIcon } from "@/components/icons/RunningIcon";
 import { ExerciseVideoPlayer } from "@/components/ExerciseVideoPlayer";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FitSelect } from "@/components/FitSelect";
 import { api } from "@/lib/api-client";
-import type { WorkoutDay } from "@/lib/data";
+import { useMuscleReward } from "@/components/MuscleStreakContext";
+import type { CardioLog, WorkoutDay } from "@/lib/data";
+import { formatProgramCardio } from "@/lib/program-cardio";
 import { cn } from "@/lib/utils";
 
 export function WorkoutClient({
@@ -16,17 +19,23 @@ export function WorkoutClient({
   day,
   days,
   initialLogs,
+  initialCardioLog,
 }: {
   userId: string;
   week: number;
   day: number;
   days: WorkoutDay[];
   initialLogs: Record<string, { actual_weight: string; actual_reps: string }>;
+  initialCardioLog: CardioLog;
 }) {
   const router = useRouter();
+  const { celebrateMuscleTask } = useMuscleReward();
   const [logs, setLogs] = useState(initialLogs);
+  const [cardioLog, setCardioLog] = useState(initialCardioLog);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingCardio, setSavingCardio] = useState(false);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [cardioMessage, setCardioMessage] = useState("");
 
   const dayData = days.find((d) => d.day === day);
 
@@ -51,6 +60,7 @@ export function WorkoutClient({
         }),
       });
       setMessages((m) => ({ ...m, [exerciseId]: "Saved" }));
+      celebrateMuscleTask("workout");
       router.refresh();
     } catch (err) {
       setMessages((m) => ({
@@ -59,6 +69,31 @@ export function WorkoutClient({
       }));
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function saveCardioLog() {
+    setSavingCardio(true);
+    setCardioMessage("");
+    try {
+      await api("workouts/cardio-log", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: userId,
+          week,
+          day,
+          duration_minutes: cardioLog.duration_minutes,
+          distance_km: cardioLog.distance_km,
+          calories_burned: cardioLog.calories_burned,
+        }),
+      });
+      setCardioMessage("Saved");
+      celebrateMuscleTask("workout");
+      router.refresh();
+    } catch (err) {
+      setCardioMessage(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSavingCardio(false);
     }
   }
 
@@ -87,7 +122,7 @@ export function WorkoutClient({
               type="button"
               onClick={() => navigate(week, d)}
               className={cn(
-                "flex flex-col items-center justify-center border py-5 transition-colors",
+                "flex flex-col items-center justify-center rounded-xl border py-5 transition-colors",
                 day === d
                   ? "border-white bg-white text-black"
                   : "border-zinc-700 bg-black text-white hover:border-zinc-500"
@@ -107,7 +142,7 @@ export function WorkoutClient({
           Day {day} Exercises
         </h2>
 
-        <div className="divide-y divide-zinc-800 border border-zinc-800">
+        <div className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-black/70 backdrop-blur-sm">
           {dayData?.exercises.map((ex) => (
             <div key={ex.id} className="p-6">
               <div className="flex gap-5">
@@ -123,10 +158,10 @@ export function WorkoutClient({
                     <img
                       src={ex.image_url}
                       alt={ex.name}
-                      className="h-28 w-36 object-cover grayscale"
+                      className="h-28 w-36 rounded-xl object-cover grayscale"
                     />
                   ) : (
-                    <div className="h-28 w-36 bg-zinc-900" />
+                    <div className="h-28 w-36 rounded-xl bg-zinc-900" />
                   )}
                 </div>
 
@@ -200,6 +235,98 @@ export function WorkoutClient({
           ))}
         </div>
       </section>
+
+      {dayData?.cardio && (
+        <section>
+          <h2 className="mb-6 text-2xl font-bold uppercase tracking-tight text-white">
+            Cardio
+          </h2>
+          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#a3e635]/10 text-[#a3e635]">
+                <RunningIcon className="h-7 w-7" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold uppercase tracking-wide text-white">
+                  Today&apos;s Cardio
+                </p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Target: {formatProgramCardio(dayData.cardio)}
+                </p>
+
+                <div className="mt-5 grid grid-cols-3 gap-4">
+                  <div>
+                    <FieldLabel>Duration (min)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={cardioLog.duration_minutes}
+                      onChange={(e) =>
+                        setCardioLog({
+                          ...cardioLog,
+                          duration_minutes: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Distance (km)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      placeholder="0"
+                      value={cardioLog.distance_km}
+                      onChange={(e) =>
+                        setCardioLog({
+                          ...cardioLog,
+                          distance_km: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Burn (kcal)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={cardioLog.calories_burned}
+                      onChange={(e) =>
+                        setCardioLog({
+                          ...cardioLog,
+                          calories_burned: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  className="mt-5 h-12 w-full text-sm"
+                  onClick={saveCardioLog}
+                  disabled={savingCardio}
+                >
+                  {savingCardio ? "Saving…" : "Save"}
+                </Button>
+                {cardioMessage && (
+                  <p
+                    className={`mt-2 text-xs ${
+                      cardioMessage === "Saved"
+                        ? "text-[#a3e635]"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {cardioMessage}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

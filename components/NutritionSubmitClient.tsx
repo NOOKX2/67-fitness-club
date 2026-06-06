@@ -7,6 +7,7 @@ import { Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { NutritionHeader } from "@/components/NutritionHeader";
+import { useMuscleReward } from "@/components/MuscleStreakContext";
 import { api } from "@/lib/api-client";
 
 const MEAL_OPTIONS = [
@@ -18,6 +19,7 @@ const MEAL_OPTIONS = [
 
 export function NutritionSubmitClient({ userId }: { userId: string }) {
   const router = useRouter();
+  const { celebrateMuscleTask } = useMuscleReward();
   const [mealNumber, setMealNumber] = useState(1);
   const [customName, setCustomName] = useState("");
   const [weight, setWeight] = useState("");
@@ -56,6 +58,7 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
           weight,
         }),
       });
+      celebrateMuscleTask("meal");
       router.push("/nutrition");
       router.refresh();
     } catch (err) {
@@ -71,7 +74,7 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
 
       <form
         onSubmit={submitMeal}
-        className="mx-auto mt-10 max-w-2xl border border-zinc-800 bg-zinc-950/80 p-8"
+        className="mx-auto mt-10 max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8"
       >
         <div className="mb-8 flex items-center justify-between">
           <h2 className="text-xl font-bold uppercase tracking-wide text-white">
@@ -93,7 +96,7 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
               <select
                 value={mealNumber}
                 onChange={(e) => setMealNumber(Number(e.target.value))}
-                className="w-full border border-zinc-700 bg-black px-4 py-3 text-sm text-white focus:border-zinc-500 focus:outline-none"
+                className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-sm text-white focus:border-zinc-500 focus:outline-none"
               >
                 {MEAL_OPTIONS.map((m) => (
                   <option key={m.value} value={m.value}>
@@ -129,13 +132,13 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your meal... (e.g., Grilled chicken with rice and vegetables)"
               rows={5}
-              className="w-full resize-none border border-zinc-700 bg-black px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-zinc-700 bg-black px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
             />
           </div>
 
           <div>
             <FieldLabel>Meal Photo</FieldLabel>
-            <label className="flex h-14 w-full cursor-pointer items-center justify-center gap-2 border border-zinc-700 bg-black text-sm font-medium uppercase tracking-wide text-white transition-colors hover:border-zinc-500">
+            <label className="flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-black text-sm font-medium uppercase tracking-wide text-white transition-colors hover:border-zinc-500">
               <Camera className="h-5 w-5" />
               {photoName ? photoName : "Take/Upload Photo"}
               <input

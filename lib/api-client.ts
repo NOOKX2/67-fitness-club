@@ -29,4 +29,5 @@ export type User = {
   tier_level: string;
   created_at?: string;
   access_expires_at?: string | null;
+  profile_photo_url?: string | null;
 };

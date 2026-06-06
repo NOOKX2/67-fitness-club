@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "./db";
 import type { User } from "./api-client";
 import { checkUserAccess, normalizeDateOnly } from "./access";
+import { profilePhotoStreamPath } from "./profile-photo-storage";
 import { ADMIN_HOME, USER_HOME, isAdminRole, normalizeRole } from "./routes";
 
 async function userFromToken(token: string): Promise<User | null> {
@@ -18,6 +19,7 @@ async function userFromToken(token: string): Promise<User | null> {
       _id: new ObjectId(payload.sub as string),
     });
     if (!doc) return null;
+    const profilePhotoId = doc.profile_photo_id ? String(doc.profile_photo_id) : null;
     return {
       id: String(doc._id),
       email: String(doc.email),
@@ -25,6 +27,11 @@ async function userFromToken(token: string): Promise<User | null> {
       role: normalizeRole(doc.role),
       tier_level: String(doc.tier_level ?? "Tier 1"),
       created_at: doc.created_at ? String(doc.created_at) : undefined,
+      profile_photo_url: profilePhotoId
+        ? profilePhotoStreamPath(profilePhotoId)
+        : typeof doc.profile_image === "string"
+          ? doc.profile_image
+          : null,
     };
   } catch {
     return null;
@@ -64,6 +71,7 @@ export async function requireAppUser(): Promise<User> {
     access_expires_at: normalizeDateOnly(
       doc?.access_expires_at ? String(doc.access_expires_at) : null
     ),
+    profile_photo_url: user.profile_photo_url ?? null,
   };
 }
 

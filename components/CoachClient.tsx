@@ -101,12 +101,12 @@ export function CoachClient({
             <div
               className={
                 m.sender === "user"
-                  ? "max-w-[85%] rounded-lg bg-zinc-800 px-4 py-2 text-sm text-white"
+                  ? "max-w-[85%] rounded-2xl bg-zinc-800 px-4 py-2 text-sm text-white"
                   : "max-w-[85%] space-y-2"
               }
             >
               {m.attachment_base64 ? (
-                <div className="overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900">
+                <div className="overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900">
                   <p className="px-3 py-1 text-xs text-zinc-500">[Attachment]</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

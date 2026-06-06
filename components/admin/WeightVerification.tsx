@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api-client";
+import { formatLiftAmount } from "@/lib/lift-utils";
 import type { PendingLift } from "@/lib/data";
 
 export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
@@ -72,7 +73,9 @@ export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
                   <p className="text-sm text-zinc-500">{lift.user_email}</p>
                   <p className="mt-2 text-sm text-white">
                     {lift.exercise_name} —{" "}
-                    <span className="text-[#a3e635]">{lift.weight_lifted} kg</span>
+                    <span className="text-[#a3e635]">
+                      {formatLiftAmount(lift.exercise_name, lift.weight_lifted)}
+                    </span>
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-2">

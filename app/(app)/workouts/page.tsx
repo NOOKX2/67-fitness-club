@@ -11,7 +11,7 @@ export default async function WorkoutsPage({
   const params = await searchParams;
   const week = Math.min(4, Math.max(1, parseInt(params.week ?? "1", 10) || 1));
   const day = Math.min(7, Math.max(1, parseInt(params.day ?? "1", 10) || 1));
-  const { days, logs } = await getWorkoutPageData(user.id, user.email, week, day);
+  const { days, logs, cardioLog } = await getWorkoutPageData(user.id, user.email, week, day);
   return (
     <WorkoutClient
       key={`${week}-${day}`}
@@ -20,6 +20,7 @@ export default async function WorkoutsPage({
       day={day}
       days={days}
       initialLogs={logs}
+      initialCardioLog={cardioLog}
     />
   );
 }

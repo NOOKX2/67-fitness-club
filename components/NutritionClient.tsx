@@ -51,17 +51,17 @@ export function NutritionClient({
     <div className="space-y-0">
       <NutritionHeader />
 
-      <div className="mt-6 border border-zinc-800 bg-zinc-950 p-5">
+      <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
         <NutritionScoreChart dailyScores={chartScores} />
       </div>
 
       {showDailyTotals && (
-        <div className="mt-6 border border-zinc-800 bg-zinc-950 p-5">
+        <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
             Daily Totals
           </p>
           <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="border border-zinc-800 px-4 py-4 text-center">
+            <div className="rounded-xl border border-zinc-800 px-4 py-4 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 Total Kcal
               </p>
@@ -80,7 +80,7 @@ export function NutritionClient({
                 <span className="ml-1 text-sm font-normal text-zinc-500">kcal</span>
               </p>
             </div>
-            <div className="border border-zinc-800 px-4 py-4 text-center">
+            <div className="rounded-xl border border-zinc-800 px-4 py-4 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 Overall Food Score
               </p>
@@ -125,7 +125,7 @@ export function NutritionClient({
         </div>
       )}
 
-      <div className="mt-6 min-h-[200px] border border-zinc-800">
+      <div className="mt-6 min-h-[200px] overflow-hidden rounded-2xl border border-zinc-800">
         {meals.length === 0 ? (
           <p className="p-8 text-center text-zinc-500">
             No meals logged today. Tap + Add Meal to submit to your coach.
@@ -139,10 +139,10 @@ export function NutritionClient({
                   <img
                     src={m.photo_base64}
                     alt={`Meal ${m.meal_number}`}
-                    className="h-24 w-24 shrink-0 object-cover"
+                    className="h-24 w-24 shrink-0 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-24 w-24 shrink-0 items-center justify-center bg-zinc-900 text-xs text-zinc-600">
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-xs text-zinc-600">
                     No photo
                   </div>
                 )}
@@ -196,7 +196,7 @@ function MacroLimitBox({
   limit?: number;
 }) {
   return (
-    <div className="border border-zinc-800 px-4 py-3 text-center">
+    <div className="rounded-xl border border-zinc-800 px-4 py-3 text-center">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
         {label}
       </p>

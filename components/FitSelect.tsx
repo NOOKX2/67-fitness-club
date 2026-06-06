@@ -21,7 +21,7 @@ export function FitSelect({
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="min-w-[140px] border border-zinc-700 bg-black px-4 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+        className="min-w-[140px] rounded-xl border border-zinc-700 bg-black px-4 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

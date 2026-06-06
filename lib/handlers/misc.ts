@@ -10,6 +10,12 @@ import {
   progressPhotoStreamPath,
   saveProgressPhotoToGridFS,
 } from "../progress-photo-storage";
+import {
+  deleteProfilePhotoFromGridFS,
+  openProfilePhotoStream,
+  profilePhotoStreamPath,
+  saveProfilePhotoToGridFS,
+} from "../profile-photo-storage";
 import { streamFromBase64DataUrl, openExerciseVideoStream } from "../exercise-video-storage";
 
 export async function handleFormChecks(
@@ -154,19 +160,89 @@ export async function handleUserProfileGet(
 export async function handleUpdateProfile(req: NextRequest): Promise<Response> {
   try {
     const user = await getCurrentUser(req);
-    const body = await parseBody<{ name?: string; profile_image?: string }>(req);
-    const update: Record<string, string> = {};
-    if (body.name) update.name = body.name;
-    if (body.profile_image) update.profile_image = body.profile_image;
+    const body = await parseBody<{
+      name?: string;
+      profile_photo_base64?: string;
+      profile_image?: string;
+    }>(req);
+    const db = await getDb();
+    const update: Record<string, unknown> = {};
+
+    if (body.name?.trim()) update.name = body.name.trim();
+
+    const photoData = body.profile_photo_base64 ?? body.profile_image;
+    if (photoData?.trim()) {
+      const userDoc = await db.collection("users").findOne({ _id: new ObjectId(user.id) });
+      const oldPhotoId = userDoc?.profile_photo_id as string | undefined;
+      const photoId = uuidv4();
+      await saveProfilePhotoToGridFS(db, photoId, photoData);
+      if (oldPhotoId) {
+        await deleteProfilePhotoFromGridFS(db, oldPhotoId).catch(() => undefined);
+      }
+      update.profile_photo_id = photoId;
+    }
+
     if (Object.keys(update).length > 0) {
-      await getDb().then((db) =>
-        db.collection("users").updateOne({ _id: new ObjectId(user.id) }, { $set: update })
+      await db.collection("users").updateOne(
+        { _id: new ObjectId(user.id) },
+        { $set: update }
       );
     }
-    return json({ message: "Profile updated successfully" });
+
+    const updated = await db.collection("users").findOne({ _id: new ObjectId(user.id) });
+    const profilePhotoId = updated?.profile_photo_id as string | undefined;
+    return json({
+      message: "Profile updated successfully",
+      name: updated?.name ?? user.name,
+      profile_photo_url: profilePhotoId
+        ? profilePhotoStreamPath(profilePhotoId)
+        : typeof updated?.profile_image === "string"
+          ? updated.profile_image
+          : null,
+    });
   } catch (e) {
     return handleAuthError(e);
   }
+}
+
+export async function handleProfilePhoto(
+  req: NextRequest,
+  segments: string[]
+): Promise<Response> {
+  try {
+    const user = await getCurrentUser(req);
+
+    if (segments[1] && segments[2] === "stream" && req.method === "GET") {
+      const photoId = segments[1];
+      const db = await getDb();
+      const owner = await db.collection("users").findOne({ profile_photo_id: photoId });
+      if (!owner) return error("Photo not found", 404);
+      if (String(owner._id) !== user.id && user.role !== "admin") {
+        return error("Access denied", 403);
+      }
+
+      const gridStream = await openProfilePhotoStream(db, photoId);
+      if (gridStream) {
+        return new Response(Readable.toWeb(gridStream.stream as Readable) as ReadableStream, {
+          headers: { "Content-Type": gridStream.contentType },
+        });
+      }
+
+      if (typeof owner.profile_image === "string" && owner.profile_image) {
+        const inline = streamFromBase64DataUrl(owner.profile_image);
+        if (inline) {
+          return new Response(new Uint8Array(inline.body), {
+            headers: { "Content-Type": inline.contentType },
+          });
+        }
+      }
+
+      return error("Photo file not found", 404);
+    }
+  } catch (e) {
+    return handleAuthError(e);
+  }
+  return error("Not found", 404);
 }
 
 export async function handleMealPlan(

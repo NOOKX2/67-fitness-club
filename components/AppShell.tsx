@@ -14,7 +14,15 @@ import {
   Pencil,
   User as UserIcon,
 } from "lucide-react";
+import { ClientAppBackground } from "@/components/ClientAppBackground";
+import { MuscleStreakBadges } from "@/components/MuscleStreakBadges";
+import { PromoMarquee } from "@/components/PromoMarquee";
+import {
+  MuscleStreakProvider,
+  useMuscleStreakStatus,
+} from "@/components/MuscleStreakContext";
 import { api, type User } from "@/lib/api-client";
+import type { DailyMuscleStatus } from "@/lib/muscle-streak-types";
 import { isAdminRole } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -32,16 +40,15 @@ function tierBadgeLabel(tier: string) {
   return tier.toUpperCase();
 }
 
-export function AppShell({
+function AppShellHeader({
   user,
-  children,
 }: {
   user: User;
-  children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const streakStatus = useMuscleStreakStatus();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,11 +69,13 @@ export function AppShell({
 
   const isVip = user.tier_level === "Tier 3" || user.tier_level === "Admin";
 
+  if (!streakStatus) return null;
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-zinc-800 bg-black">
-        <div className="mx-auto flex max-w-5xl items-end justify-between px-6 pt-4">
-          <div className="w-32 shrink-0" />
+    <div className="mx-auto flex max-w-5xl items-end justify-between gap-4 px-6 pt-4">
+          <div className="shrink-0 pb-2">
+            <MuscleStreakBadges status={streakStatus} compact />
+          </div>
           <nav className="flex items-end justify-center gap-10 sm:gap-14">
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -124,13 +133,22 @@ export function AppShell({
               <button
                 type="button"
                 onClick={() => setMenuOpen((o) => !o)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-600 bg-zinc-900"
                 aria-label="Account menu"
               >
-                <UserIcon className="h-4 w-4 text-zinc-400" />
+                {user.profile_photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.profile_photo_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UserIcon className="h-4 w-4 text-zinc-400" />
+                )}
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-11 z-50 w-56 border border-zinc-700 bg-zinc-950 py-2 shadow-xl">
+                <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 py-2 shadow-xl">
                   <div className="border-b border-zinc-800 px-4 pb-3">
                     <p className="font-bold uppercase text-white">{user.name}</p>
                     <p className="text-xs text-zinc-500">{user.email}</p>
@@ -161,10 +179,33 @@ export function AppShell({
               )}
             </div>
           </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
     </div>
+  );
+}
+
+export function AppShell({
+  user,
+  muscleStatus,
+  children,
+}: {
+  user: User;
+  muscleStatus: DailyMuscleStatus;
+  children: React.ReactNode;
+}) {
+  return (
+    <MuscleStreakProvider initialStatus={muscleStatus}>
+      <div className="relative min-h-screen bg-zinc-950 text-white">
+        <ClientAppBackground />
+
+        <div className="relative z-10">
+          <header className="border-b border-zinc-800/80 bg-black/55 backdrop-blur-md">
+            <AppShellHeader user={user} />
+            <PromoMarquee />
+          </header>
+
+          <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+        </div>
+      </div>
+    </MuscleStreakProvider>
   );
 }

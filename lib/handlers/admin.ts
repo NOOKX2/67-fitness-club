@@ -166,6 +166,7 @@ export async function handleAdmin(
         track: string;
         day: number;
         exercises: unknown[];
+        cardio?: unknown;
         id?: string;
       }>(req);
       if (!program.track || !program.day) {
@@ -175,6 +176,7 @@ export async function handleAdmin(
         track: program.track,
         day: program.day,
         exercises: program.exercises ?? [],
+        cardio: program.cardio ?? null,
         id: program.id ?? uuidv4(),
         updated_at: new Date().toISOString(),
       };
@@ -330,6 +332,7 @@ export async function handleAdmin(
         week: number;
         day: number;
         exercises: unknown[];
+        cardio?: unknown;
       }>(req);
       const week = body.week ?? 1;
       const result = await db.collection("custom_programs").updateOne(
@@ -341,6 +344,7 @@ export async function handleAdmin(
             week,
             day: body.day,
             exercises: body.exercises,
+            cardio: body.cardio ?? null,
             updated_at: new Date().toISOString(),
           },
         },
@@ -533,7 +537,7 @@ export async function handleAdmin(
       return json(clients);
     }
 
-    if (resource === "lift-progress" && segments[2] === "pending") {
+    if (resource === "lift-progress" && segments[2] === "pending" && req.method === "GET") {
       const lifts = await db
         .collection("lift_progress")
         .find({ verification_status: "Pending" })
@@ -543,22 +547,62 @@ export async function handleAdmin(
       return json(lifts);
     }
 
-    if (resource === "lift-progress" && segments[2] && segments[3] === "verify") {
-      const result = await db.collection("lift_progress").updateOne(
-        { id: segments[2] },
-        { $set: { verification_status: "Verified" } }
+    if (
+      resource === "lift-progress" &&
+      segments[2] &&
+      segments[3] === "verify" &&
+      req.method === "POST"
+    ) {
+      const liftId = segments[2];
+      const existing = await db.collection("lift_progress").findOne({ id: liftId });
+      if (!existing) return error("Lift record not found", 404);
+
+      const verifiedAt = new Date().toISOString();
+      await db.collection("lift_progress").updateOne(
+        { id: liftId },
+        {
+          $set: {
+            verification_status: "Verified",
+            verified_at: verifiedAt,
+          },
+          $unset: { rejected_at: "" },
+        }
       );
-      if (result.modifiedCount === 0) return error("Lift record not found", 404);
-      return json({ message: "Lift verified successfully", verification_status: "Verified" });
+      return json({
+        message: "Lift verified successfully",
+        verification_status: "Verified",
+        verified_at: verifiedAt,
+        id: liftId,
+      });
     }
 
-    if (resource === "lift-progress" && segments[2] && segments[3] === "reject") {
-      const result = await db.collection("lift_progress").updateOne(
-        { id: segments[2] },
-        { $set: { verification_status: "Rejected" } }
+    if (
+      resource === "lift-progress" &&
+      segments[2] &&
+      segments[3] === "reject" &&
+      req.method === "POST"
+    ) {
+      const liftId = segments[2];
+      const existing = await db.collection("lift_progress").findOne({ id: liftId });
+      if (!existing) return error("Lift record not found", 404);
+
+      const rejectedAt = new Date().toISOString();
+      await db.collection("lift_progress").updateOne(
+        { id: liftId },
+        {
+          $set: {
+            verification_status: "Rejected",
+            rejected_at: rejectedAt,
+          },
+          $unset: { verified_at: "" },
+        }
       );
-      if (result.modifiedCount === 0) return error("Lift record not found", 404);
-      return json({ message: "Lift rejected", verification_status: "Rejected" });
+      return json({
+        message: "Lift rejected",
+        verification_status: "Rejected",
+        rejected_at: rejectedAt,
+        id: liftId,
+      });
     }
   } catch (e) {
     return handleAuthError(e);

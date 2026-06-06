@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { getDailyMuscleStatus } from "@/lib/muscle-streak";
 import { requireAppUser } from "@/lib/session";
 
 export default async function AppLayout({
@@ -7,5 +8,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await requireAppUser();
-  return <AppShell user={user}>{children}</AppShell>;
+  const muscleStatus = await getDailyMuscleStatus(user.id);
+  return (
+    <AppShell user={user} muscleStatus={muscleStatus}>
+      {children}
+    </AppShell>
+  );
 }

@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
+import { normalizeProgramCardio, type ProgramCardio } from "@/lib/program-cardio";
 import { ObjectId } from "mongodb";
 import { normalizeDateOnly } from "./access";
+import { profilePhotoStreamPath } from "./profile-photo-storage";
 import { dateKeyFromIso, localDateKey, localDayRange } from "./date-utils";
 import { getDb } from "./db";
 import { progressPhotoStreamPath, readProgressPhotoAsDataUrl } from "./progress-photo-storage";
@@ -58,7 +60,13 @@ export type WorkoutExercise = {
   demo_video?: ExerciseDemoVideo | null;
 };
 
-export type WorkoutDay = { day: number; exercises: WorkoutExercise[] };
+export type { ProgramCardio };
+
+export type WorkoutDay = {
+  day: number;
+  exercises: WorkoutExercise[];
+  cardio?: ProgramCardio | null;
+};
 
 export type WorkoutLog = {
   id?: string;
@@ -67,6 +75,12 @@ export type WorkoutLog = {
   actual_weight: string;
   actual_reps: string;
   timestamp?: string;
+};
+
+export type CardioLog = {
+  duration_minutes: string;
+  distance_km: string;
+  calories_burned: string;
 };
 
 export type WeightEntry = { weight: number; height?: number; date: string };
@@ -101,6 +115,8 @@ export type LiftRecord = {
   weight_lifted: number;
   verification_status: string;
   submitted_at?: string;
+  verified_at?: string;
+  rejected_at?: string;
 };
 
 export type AdminStats = {
@@ -170,6 +186,7 @@ export type ProgramTemplate = {
   track: string;
   day: number;
   exercises: ProgramExercise[];
+  cardio?: ProgramCardio | null;
 };
 
 function defaultWeek(week: number) {
@@ -348,7 +365,11 @@ export async function getWorkoutPageData(
   userEmail: string,
   week: number,
   day: number
-): Promise<{ days: WorkoutDay[]; logs: Record<string, WorkoutLog> }> {
+): Promise<{
+  days: WorkoutDay[];
+  logs: Record<string, WorkoutLog>;
+  cardioLog: CardioLog;
+}> {
   const db = await getDb();
 
   const existing = await db
@@ -385,14 +406,23 @@ export async function getWorkoutPageData(
     );
   }
 
-  if (customProgram?.exercises?.length) {
-    const customExercises = await attachDemoVideos(
-      db,
-      toWorkoutExercises(customProgram.exercises as ProgramExercise[])
-    );
-    days = days.map((d) =>
-      d.day === day ? { ...d, exercises: customExercises } : d
-    );
+  let dayCardio: ProgramCardio | null = null;
+
+  if (customProgram) {
+    dayCardio = normalizeProgramCardio(customProgram.cardio);
+    if (customProgram.exercises?.length) {
+      const customExercises = await attachDemoVideos(
+        db,
+        toWorkoutExercises(customProgram.exercises as ProgramExercise[])
+      );
+      days = days.map((d) =>
+        d.day === day ? { ...d, exercises: customExercises, cardio: dayCardio } : d
+      );
+    } else {
+      days = days.map((d) =>
+        d.day === day ? { ...d, cardio: dayCardio } : d
+      );
+    }
   } else {
     const user = await db.collection("users").findOne({ _id: new ObjectId(userId) });
     const track = trackForTier(String(user?.tier_level ?? ""));
@@ -400,14 +430,23 @@ export async function getWorkoutPageData(
       { track, day },
       { projection: { _id: 0 } }
     );
-    if (template?.exercises?.length) {
-      const templateExercises = await attachDemoVideos(
-        db,
-        toWorkoutExercises(template.exercises as ProgramExercise[])
-      );
-      days = days.map((d) =>
-        d.day === day ? { ...d, exercises: templateExercises } : d
-      );
+    if (template) {
+      dayCardio = normalizeProgramCardio(template.cardio);
+      if (template.exercises?.length) {
+        const templateExercises = await attachDemoVideos(
+          db,
+          toWorkoutExercises(template.exercises as ProgramExercise[])
+        );
+        days = days.map((d) =>
+          d.day === day
+            ? { ...d, exercises: templateExercises, cardio: dayCardio }
+            : d
+        );
+      } else {
+        days = days.map((d) =>
+          d.day === day ? { ...d, cardio: dayCardio } : d
+        );
+      }
     }
   }
 
@@ -426,7 +465,17 @@ export async function getWorkoutPageData(
     };
   }
 
-  return { days, logs };
+  const cardioDoc = await db.collection("cardio_logs").findOne(
+    { user_id: userId, week, day },
+    { projection: { _id: 0 } }
+  );
+  const cardioLog: CardioLog = {
+    duration_minutes: String(cardioDoc?.duration_minutes ?? ""),
+    distance_km: String(cardioDoc?.distance_km ?? ""),
+    calories_burned: String(cardioDoc?.calories_burned ?? ""),
+  };
+
+  return { days, logs, cardioLog };
 }
 
 export async function getWeightHistory(userId: string): Promise<WeightEntry[]> {
@@ -526,7 +575,22 @@ export async function getLiftRecords(userId: string): Promise<LiftRecord[]> {
     weight_lifted: Number(l.weight_lifted),
     verification_status: String(l.verification_status ?? "Pending"),
     submitted_at: l.submitted_at ? String(l.submitted_at) : undefined,
+    verified_at: l.verified_at ? String(l.verified_at) : undefined,
+    rejected_at: l.rejected_at ? String(l.rejected_at) : undefined,
   }));
+}
+
+export async function getUserProfilePhotoUrl(userId: string): Promise<string | null> {
+  const db = await getDb();
+  const doc = await db.collection("users").findOne({ _id: new ObjectId(userId) });
+  if (!doc) return null;
+  if (doc.profile_photo_id) {
+    return profilePhotoStreamPath(String(doc.profile_photo_id));
+  }
+  if (typeof doc.profile_image === "string" && doc.profile_image) {
+    return doc.profile_image;
+  }
+  return null;
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
@@ -588,7 +652,15 @@ export async function getPendingLifts(): Promise<PendingLift[]> {
     .project({ _id: 0 })
     .sort({ submitted_at: -1 })
     .toArray();
-  return lifts as PendingLift[];
+  return lifts.map((l) => ({
+    id: String(l.id),
+    user_id: String(l.user_id),
+    user_name: String(l.user_name ?? ""),
+    user_email: String(l.user_email ?? ""),
+    exercise_name: String(l.exercise_name),
+    weight_lifted: Number(l.weight_lifted),
+    submitted_at: String(l.submitted_at ?? ""),
+  }));
 }
 
 export async function getPendingFormChecks(): Promise<FormCheckSubmission[]> {
@@ -628,6 +700,7 @@ export async function getProgramTemplate(
     track: String(program.track ?? track),
     day: Number(program.day ?? day),
     exercises: (program.exercises as ProgramExercise[]) ?? [],
+    cardio: normalizeProgramCardio(program.cardio),
   };
 }
 
@@ -635,7 +708,10 @@ export async function getCustomProgram(
   clientEmail: string,
   week: number,
   day: number
-): Promise<{ exercises: ProgramExercise[] }> {
+): Promise<{
+  exercises: ProgramExercise[];
+  cardio: ProgramCardio | null;
+}> {
   const db = await getDb();
   let program = await db.collection("custom_programs").findOne(
     {
@@ -657,7 +733,10 @@ export async function getCustomProgram(
       { projection: { _id: 0 } }
     );
   }
-  return { exercises: (program?.exercises as ProgramExercise[]) ?? [] };
+  return {
+    exercises: (program?.exercises as ProgramExercise[]) ?? [],
+    cardio: normalizeProgramCardio(program?.cardio),
+  };
 }
 
 export async function getNutritionLimits(

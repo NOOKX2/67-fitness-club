@@ -73,6 +73,37 @@ export async function handleWorkouts(
       return json(doc);
     }
 
+    if (segments[1] === "cardio-log" && req.method === "POST") {
+      const user = await getCurrentUser(req);
+      const log = await parseBody<{
+        user_id: string;
+        week: number;
+        day: number;
+        duration_minutes: string;
+        distance_km: string;
+        calories_burned: string;
+      }>(req);
+      if (log.user_id !== user.id) return error("Access denied", 403);
+      const query = {
+        user_id: log.user_id,
+        week: log.week,
+        day: log.day,
+      };
+      const doc = {
+        id: uuidv4(),
+        user_id: log.user_id,
+        week: log.week,
+        day: log.day,
+        duration_minutes: log.duration_minutes ?? "",
+        distance_km: log.distance_km ?? "",
+        calories_burned: log.calories_burned ?? "",
+        timestamp: new Date().toISOString(),
+      };
+      await db.collection("cardio_logs").deleteMany(query);
+      await db.collection("cardio_logs").insertOne(doc);
+      return json(doc);
+    }
+
     if (segments[1] === "logs" && segments[2] && segments[3] && segments[4]) {
       const logs = await db
         .collection("workout_logs")

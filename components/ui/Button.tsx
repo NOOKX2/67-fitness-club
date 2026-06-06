@@ -11,7 +11,7 @@ export const Button = forwardRef<
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center font-bold uppercase tracking-wider transition-colors disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-xl font-bold uppercase tracking-wider transition-colors disabled:opacity-50",
         variant === "primary" &&
           "bg-white text-black hover:bg-zinc-200",
         variant === "outline" &&

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Scale, TrendingUp } from "lucide-react";
 import { WeightProgressChart } from "@/components/WeightProgressChart";
+import { useMuscleReward } from "@/components/MuscleStreakContext";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
@@ -43,7 +44,7 @@ function ComparePhotoColumn({
       <select
         value={selectedId}
         onChange={(e) => onSelect(e.target.value)}
-        className="w-full border border-zinc-700 bg-black px-3 py-2.5 text-sm text-white"
+        className="w-full rounded-xl border border-zinc-700 bg-black px-3 py-2.5 text-sm text-white"
       >
         {photos.map((p) => (
           <option key={p.id} value={p.id}>
@@ -56,10 +57,10 @@ function ComparePhotoColumn({
         <img
           src={src}
           alt={label}
-          className="aspect-square w-full object-cover"
+          className="aspect-square w-full rounded-xl object-cover"
         />
       ) : (
-        <div className="flex aspect-square w-full items-center justify-center bg-zinc-900 text-sm text-zinc-600">
+        <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-zinc-900 text-sm text-zinc-600">
           No photo
         </div>
       )}
@@ -88,6 +89,7 @@ export function ProgressClient({
   initialHeight: number | null;
 }) {
   const router = useRouter();
+  const { celebrateMuscleTask } = useMuscleReward();
   const last = initialHistory[initialHistory.length - 1];
   const [weight, setWeight] = useState(last ? String(last.weight) : "85");
   const [height, setHeight] = useState(
@@ -154,6 +156,7 @@ export function ProgressClient({
         },
       ]);
       setMessage("Weight saved");
+      celebrateMuscleTask("weight");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -253,7 +256,7 @@ export function ProgressClient({
       {message && <p className="text-sm text-[#a3e635]">{message}</p>}
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <section className="border border-zinc-800 p-6">
+      <section className="rounded-2xl border border-zinc-800 p-6">
         <h2 className="text-lg font-bold uppercase tracking-wide text-white">
           Weight Tracker
         </h2>
@@ -284,7 +287,7 @@ export function ProgressClient({
         </Button>
 
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="border border-zinc-800 px-4 py-3 text-center">
+          <div className="rounded-xl border border-zinc-800 px-4 py-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               Total Change
             </p>
@@ -292,7 +295,7 @@ export function ProgressClient({
               {hasWeightHistory ? formatSigned(changePercent, "%") : "—"}
             </p>
           </div>
-          <div className="border border-zinc-800 px-4 py-3 text-center">
+          <div className="rounded-xl border border-zinc-800 px-4 py-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               Change in Kg
             </p>
@@ -300,7 +303,7 @@ export function ProgressClient({
               {hasWeightHistory ? formatSigned(changeKg, " kg") : "—"}
             </p>
           </div>
-          <div className="border border-zinc-800 px-4 py-3 text-center">
+          <div className="rounded-xl border border-zinc-800 px-4 py-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               Current BMI
             </p>
@@ -308,7 +311,7 @@ export function ProgressClient({
               {bmi != null ? bmi.toFixed(1) : "—"}
             </p>
           </div>
-          <div className="border border-zinc-800 px-4 py-3 text-center">
+          <div className="rounded-xl border border-zinc-800 px-4 py-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               Avg / Time
             </p>
@@ -349,7 +352,7 @@ export function ProgressClient({
         )}
       </section>
 
-      <section className="border border-zinc-800 p-6">
+      <section className="rounded-2xl border border-zinc-800 p-6">
         <h2 className="text-lg font-bold uppercase tracking-wide text-white">
           Upload Progress Photo
         </h2>
@@ -383,7 +386,7 @@ export function ProgressClient({
           <img
             src={photoPreview}
             alt="Selected progress photo"
-            className="mt-4 aspect-square w-full max-w-xs object-cover"
+            className="mt-4 aspect-square w-full max-w-xs rounded-xl object-cover"
           />
         ) : null}
         {photoError && <p className="mt-4 text-sm text-red-400">{photoError}</p>}
@@ -401,7 +404,7 @@ export function ProgressClient({
         </Button>
       </section>
 
-      <section className="border border-zinc-800 p-6">
+      <section className="rounded-2xl border border-zinc-800 p-6">
         <h2 className="text-lg font-bold uppercase tracking-wide text-white">
           Before &amp; After
         </h2>

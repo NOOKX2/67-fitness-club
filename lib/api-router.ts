@@ -11,6 +11,7 @@ import {
   handleWeightTracking,
   handleUserProfileGet,
   handleUpdateProfile,
+  handleProfilePhoto,
   handleMealPlan,
   handleWeeklyReports,
   handleProgress,
@@ -64,6 +65,9 @@ export async function handleApi(
       break;
     case "update-profile":
       if (req.method === "POST") return handleUpdateProfile(req);
+      break;
+    case "profile-photo":
+      if (rest[0]) return handleProfilePhoto(req, ["profile-photo", ...rest]);
       break;
     case "meal-plan":
       if (rest[0]) return handleMealPlan(req, rest[0]);

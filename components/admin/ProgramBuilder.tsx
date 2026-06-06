@@ -7,7 +7,12 @@ import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
+import { CardioEditor } from "@/components/admin/CardioEditor";
 import type { ExerciseVideo, ProgramExercise, ProgramTemplate } from "@/lib/data";
+import {
+  cardioToFormState,
+  formStateToCardio,
+} from "@/lib/program-cardio";
 
 const TRACKS = ["Fat Loss", "Muscle Gain", "Maintenance"];
 
@@ -23,11 +28,15 @@ export function ProgramBuilder({
   videos: ExerciseVideo[];
 }) {
   const router = useRouter();
+  const initialCardioForm = cardioToFormState(program.cardio);
   const [exercises, setExercises] = useState<ProgramExercise[]>(
     program.exercises.length > 0
       ? program.exercises
       : [{ id: uuidv4(), name: "", target_sets: 3, target_reps: "8-12", demo_video_id: null }]
   );
+  const [cardioMinutes, setCardioMinutes] = useState(initialCardioForm.minutes);
+  const [cardioKm, setCardioKm] = useState(initialCardioForm.km);
+  const [cardioNotes, setCardioNotes] = useState(initialCardioForm.notes);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -64,6 +73,11 @@ export function ProgramBuilder({
           track,
           day,
           exercises,
+          cardio: formStateToCardio({
+            minutes: cardioMinutes,
+            km: cardioKm,
+            notes: cardioNotes,
+          }),
           id: program.id,
         }),
       });
@@ -202,6 +216,15 @@ export function ProgramBuilder({
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
         {message && <p className="mt-4 text-sm text-[#a3e635]">{message}</p>}
+
+        <CardioEditor
+          minutes={cardioMinutes}
+          km={cardioKm}
+          notes={cardioNotes}
+          onMinutesChange={setCardioMinutes}
+          onKmChange={setCardioKm}
+          onNotesChange={setCardioNotes}
+        />
 
         <Button
           type="button"

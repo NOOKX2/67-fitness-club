@@ -7,8 +7,14 @@ import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
+import { CardioEditor } from "@/components/admin/CardioEditor";
 import type { AdminClient, ExerciseVideo, NutritionLimits, ProgramExercise } from "@/lib/data";
 import { limitMacrosToKcal } from "@/lib/nutrition-utils";
+import {
+  cardioToFormState,
+  formStateToCardio,
+  type ProgramCardio,
+} from "@/lib/program-cardio";
 
 export function CustomPrograms({
   clients,
@@ -16,6 +22,7 @@ export function CustomPrograms({
   week,
   day,
   initialExercises,
+  initialCardio,
   initialLimits,
   videos,
 }: {
@@ -24,15 +31,20 @@ export function CustomPrograms({
   week: number;
   day: number;
   initialExercises: ProgramExercise[];
+  initialCardio: ProgramCardio | null;
   initialLimits: NutritionLimits;
   videos: ExerciseVideo[];
 }) {
   const router = useRouter();
+  const initialCardioForm = cardioToFormState(initialCardio);
   const [exercises, setExercises] = useState<ProgramExercise[]>(
     initialExercises.length > 0
       ? initialExercises
       : []
   );
+  const [cardioMinutes, setCardioMinutes] = useState(initialCardioForm.minutes);
+  const [cardioKm, setCardioKm] = useState(initialCardioForm.km);
+  const [cardioNotes, setCardioNotes] = useState(initialCardioForm.notes);
   const [limits, setLimits] = useState({
     protein: initialLimits.protein != null ? String(initialLimits.protein) : "",
     carbs: initialLimits.carbs != null ? String(initialLimits.carbs) : "",
@@ -91,8 +103,19 @@ export function CustomPrograms({
 
   async function save() {
     if (!selectedEmail) return;
+    const cardio = formStateToCardio({
+      minutes: cardioMinutes,
+      km: cardioKm,
+      notes: cardioNotes,
+    });
+    const hasCardio = cardio != null;
     const incomplete = exercises.some((ex) => !ex.demo_video_id || !ex.name.trim());
-    if (incomplete) {
+    if (exercises.length === 0 && !hasCardio) {
+      setError("Add at least one exercise or cardio assignment");
+      setMessage("");
+      return;
+    }
+    if (exercises.length > 0 && incomplete) {
       setError("Please select an exercise from the library for every row");
       setMessage("");
       return;
@@ -108,6 +131,7 @@ export function CustomPrograms({
           week,
           day,
           exercises,
+          cardio,
         }),
       });
       setMessage(`Saved Week ${week}, Day ${day} for ${selected?.name ?? "client"}`);
@@ -362,7 +386,19 @@ export function CustomPrograms({
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
           {message && <p className="mt-4 text-sm text-[#a3e635]">{message}</p>}
 
-          {exercises.length > 0 && (
+          <CardioEditor
+            minutes={cardioMinutes}
+            km={cardioKm}
+            notes={cardioNotes}
+            onMinutesChange={setCardioMinutes}
+            onKmChange={setCardioKm}
+            onNotesChange={setCardioNotes}
+          />
+
+          {(exercises.length > 0 ||
+            cardioMinutes.trim() ||
+            cardioKm.trim() ||
+            cardioNotes.trim()) && (
             <Button
               type="button"
               className="mt-6 h-11 w-full gap-2 bg-[#a3e635] text-black"

@@ -23,7 +23,7 @@ export function NutritionHeader({
           Nutrition Tracker
         </h1>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 border border-zinc-700 bg-black px-4 py-2.5">
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-black px-4 py-2.5">
             <Calendar className="h-4 w-4 text-[#a3e635]" />
             <span className="text-sm text-white">{dateStr}</span>
           </div>

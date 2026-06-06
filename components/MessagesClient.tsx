@@ -51,7 +51,7 @@ export function MessagesClient({ userId }: { userId: string }) {
   const coach = coaches.find((c) => c.id === coachId);
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
+    <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/30">
       {coach && (
         <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-3">
           {coach.profile_image_url && (
