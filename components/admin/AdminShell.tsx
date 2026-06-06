@@ -15,6 +15,7 @@ import {
   Video,
   Wand2,
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -86,7 +87,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-end border-b border-zinc-800 bg-[#0a0e14] px-8 py-4">
+          <NotificationBell isAdmin />
+        </header>
+        <div className="flex-1 overflow-y-auto p-8">{children}</div>
+      </main>
     </div>
   );
 }

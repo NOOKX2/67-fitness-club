@@ -1,14 +1,41 @@
+"use client";
+
 import Link from "next/link";
-import { Calendar, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { localDateKey } from "@/lib/date-utils";
+
+function formatDisplayDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
+}
+
+function shiftDateKey(dateKey: string, delta: number) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const next = new Date(y, m - 1, d + delta);
+  return localDateKey(next);
+}
 
 export function NutritionHeader({
+  selectedDate = localDateKey(new Date()),
+  isToday = selectedDate === localDateKey(new Date()),
   showAddButton = true,
 }: {
+  selectedDate?: string;
+  isToday?: boolean;
   showAddButton?: boolean;
 }) {
-  const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+  const router = useRouter();
+  const today = localDateKey(new Date());
+  const canGoForward = selectedDate < today;
+
+  function navigate(date: string) {
+    const params = new URLSearchParams();
+    if (date !== today) params.set("date", date);
+    const query = params.toString();
+    router.push(query ? `/nutrition?${query}` : "/nutrition");
+  }
 
   return (
     <>
@@ -23,11 +50,49 @@ export function NutritionHeader({
           Nutrition Tracker
         </h1>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-black px-4 py-2.5">
-            <Calendar className="h-4 w-4 text-[#a3e635]" />
-            <span className="text-sm text-white">{dateStr}</span>
+          <div className="flex items-center overflow-hidden rounded-xl border border-zinc-700 bg-black">
+            <button
+              type="button"
+              onClick={() => navigate(shiftDateKey(selectedDate, -1))}
+              className="flex h-11 w-10 items-center justify-center text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <label className="relative flex cursor-pointer items-center gap-2 border-x border-zinc-700 px-4 py-2.5">
+              <Calendar className="h-4 w-4 shrink-0 text-[#a3e635]" />
+              <span className="text-sm text-white">{formatDisplayDate(selectedDate)}</span>
+              <input
+                type="date"
+                value={selectedDate}
+                max={today}
+                onChange={(e) => {
+                  if (e.target.value) navigate(e.target.value);
+                }}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                aria-label="Pick date"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => navigate(shiftDateKey(selectedDate, 1))}
+              disabled={!canGoForward}
+              className="flex h-11 w-10 items-center justify-center text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Next day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-          {showAddButton && (
+          {!isToday && (
+            <button
+              type="button"
+              onClick={() => navigate(today)}
+              className="rounded-xl border border-zinc-700 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
+            >
+              Today
+            </button>
+          )}
+          {showAddButton && isToday && (
             <Link href="/nutrition/add">
               <Button type="button" className="h-11 gap-2 px-5 text-xs">
                 <Plus className="h-4 w-4" />

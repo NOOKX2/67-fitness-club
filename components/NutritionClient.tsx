@@ -18,10 +18,14 @@ export function NutritionClient({
   meals,
   scoreTrend,
   limits,
+  selectedDate,
+  isToday,
 }: {
   meals: MealSubmission[];
   scoreTrend: DailyNutritionScore[];
   limits: NutritionLimits;
+  selectedDate: string;
+  isToday: boolean;
 }) {
   const totals = sumMealMacros(meals);
   const totalKcal = macrosToKcal(totals);
@@ -49,7 +53,7 @@ export function NutritionClient({
 
   return (
     <div className="space-y-0">
-      <NutritionHeader />
+      <NutritionHeader selectedDate={selectedDate} isToday={isToday} />
 
       <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
         <NutritionScoreChart dailyScores={chartScores} />
@@ -128,7 +132,9 @@ export function NutritionClient({
       <div className="mt-6 min-h-[200px] overflow-hidden rounded-2xl border border-zinc-800">
         {meals.length === 0 ? (
           <p className="p-8 text-center text-zinc-500">
-            No meals logged today. Tap + Add Meal to submit to your coach.
+            {isToday
+              ? "No meals logged today. Tap + Add Meal to submit to your coach."
+              : "No meals logged on this day."}
           </p>
         ) : (
           <ul className="divide-y divide-zinc-800">

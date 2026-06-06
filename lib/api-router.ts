@@ -4,6 +4,7 @@ import { handleAuth, handleUserProfile } from "./handlers/auth";
 import { handleWorkouts, handleAdminClientLogs } from "./handlers/workouts";
 import { handleNutrition, handleAdminNutrition } from "./handlers/nutrition";
 import { handleMessages, handleCoaches } from "./handlers/messages";
+import { handleNotifications } from "./handlers/notifications";
 import { handleAdmin } from "./handlers/admin";
 import {
   handleFormChecks,
@@ -45,6 +46,8 @@ export async function handleApi(
       return handleMessages(req, ["messages", ...rest]);
     case "coaches":
       return handleCoaches(req);
+    case "notifications":
+      return handleNotifications(req, ["notifications", ...rest]);
     case "admin":
       if (rest[0] === "client-logs") {
         return handleAdminClientLogs(req, ["admin", "client-logs", ...rest.slice(1)]);

@@ -14,6 +14,7 @@
   --color-foreground: var(--foreground);
   --color-vip: var(--vip);
   --font-sans: var(--font-geist-sans);
+  --animate-login-ken-burns: login-ken-burns 18s ease-in-out infinite alternate;
 }
 
 body {
@@ -42,6 +43,91 @@ input[type="number"]::-webkit-outer-spin-button {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-promo-marquee {
+    animation: none;
+  }
+}
+
+@keyframes login-ken-burns {
+  0% {
+    transform: scale(1.08) translate(0, 0);
+  }
+  25% {
+    transform: scale(1.13) translate(-18px, -10px);
+  }
+  50% {
+    transform: scale(1.1) translate(12px, -20px);
+  }
+  75% {
+    transform: scale(1.15) translate(-8px, 10px);
+  }
+  100% {
+    transform: scale(1.08) translate(16px, 5px);
+  }
+}
+
+@keyframes login-sweep {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes login-streak {
+  0% {
+    transform: translateY(-40px) scaleY(0.8);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(40px) scaleY(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes login-float-up {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(20px);
+    opacity: 0;
+  }
+}
+
+.animate-login-ken-burns {
+  animation: login-ken-burns 18s ease-in-out infinite alternate;
+}
+
+.animate-login-sweep {
+  animation: login-sweep 6s ease-in-out infinite;
+}
+
+.animate-login-streak {
+  animation: login-streak linear infinite;
+}
+
+.animate-login-float-up {
+  animation: login-float-up linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-login-ken-burns,
+  .animate-login-sweep,
+  .animate-login-streak,
+  .animate-login-float-up {
     animation: none;
   }
 }

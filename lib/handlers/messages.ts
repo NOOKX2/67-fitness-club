@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { NextRequest } from "next/server";
+import { ObjectId } from "mongodb";
 import { getDb } from "../db";
 import { json, error, parseBody } from "../api-helpers";
 
@@ -34,6 +35,24 @@ export async function handleMessages(
         user_id: body.user_id,
         type: "coach_message",
         title: "New message from your coach",
+        message:
+          body.content.slice(0, 100) + (body.content.length > 100 ? "..." : ""),
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    if (body.sender === "user") {
+      const client = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(body.user_id) });
+      await db.collection("notifications").insertOne({
+        id: uuidv4(),
+        audience: "admin",
+        client_id: body.user_id,
+        client_name: client?.name ? String(client.name) : "Client",
+        type: "client_message",
+        title: "New client message",
         message:
           body.content.slice(0, 100) + (body.content.length > 100 ? "..." : ""),
         read: false,

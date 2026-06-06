@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Apple,
-  Bell,
   Calendar,
   Crown,
   LineChart,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { ClientAppBackground } from "@/components/ClientAppBackground";
 import { MuscleStreakBadges } from "@/components/MuscleStreakBadges";
+import { NotificationBell } from "@/components/NotificationBell";
 import { PromoMarquee } from "@/components/PromoMarquee";
 import {
   MuscleStreakProvider,
@@ -112,13 +112,7 @@ function AppShellHeader({
           </nav>
 
           <div className="flex items-center gap-4 pb-2">
-            <button
-              type="button"
-              className="text-white"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" strokeWidth={1.5} />
-            </button>
+            <NotificationBell />
             {isVip ? (
               <span className="flex items-center gap-1.5 rounded-md bg-[#a3e635] px-3 py-1.5 text-[10px] font-bold tracking-wide text-black">
                 <Crown className="h-3.5 w-3.5" />

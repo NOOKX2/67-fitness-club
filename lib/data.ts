@@ -254,15 +254,22 @@ export async function getMealsForUser(
 
 export async function getNutritionScoreTrend(
   userId: string,
-  days = 7
+  days = 7,
+  endDate?: string
 ): Promise<DailyNutritionScore[]> {
   const db = await getDb();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const rangeStart = new Date(today);
-  rangeStart.setDate(rangeStart.getDate() - (days - 1));
+  const end = new Date();
+  if (endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    const [y, m, d] = endDate.split("-").map(Number);
+    end.setFullYear(y, m - 1, d);
+  }
+  end.setHours(0, 0, 0, 0);
+  const rangeStart = new Date(end);
+  rangeStart.setDate(end.getDate() - (days - 1));
   const { start: queryStart } = localDayRange(localDateKey(rangeStart));
-  const { end: queryEnd } = localDayRange(localDateKey(today));
+  const { end: queryEnd } = localDayRange(localDateKey(end));
+  const todayKey = localDateKey(new Date());
+  const selectedKey = localDateKey(end);
 
   const rawMeals = await db
     .collection("meal_submissions_v2")
@@ -297,7 +304,12 @@ export async function getNutritionScoreTrend(
     const dayMeals = mealsByDate.get(dateKey) ?? [];
     return {
       date: dateKey,
-      dayLabel: index === days - 1 ? "Today" : `Day ${index + 1}`,
+      dayLabel:
+        dateKey === todayKey
+          ? "Today"
+          : index === days - 1
+            ? `${String(day.getDate()).padStart(2, "0")}/${String(day.getMonth() + 1).padStart(2, "0")}`
+            : `Day ${index + 1}`,
       score: averageMealRating(dayMeals),
     };
   });

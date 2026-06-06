@@ -142,7 +142,7 @@ export function ExerciseVideoPlayer({
           "group relative block overflow-hidden rounded-xl",
           canExpand && "cursor-pointer ring-offset-2 ring-offset-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
         )}
-        aria-label={canExpand ? `Expand ${title ?? "exercise"} video` : undefined}
+        aria-label={canExpand ? `Open ${title ?? "exercise"} tutorial` : undefined}
       >
         <div className={cn(canExpand && "pointer-events-none")}>
           <VideoMedia
@@ -157,7 +157,7 @@ export function ExerciseVideoPlayer({
           <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
             <span className="flex items-center gap-1.5 rounded-full border border-white/30 bg-black/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
               <Maximize2 className="h-3.5 w-3.5" />
-              Expand
+              Tutorial
             </span>
           </span>
         )}

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck, Paperclip, User } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { ClipboardCheck, User } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { ChatComposer, ChatMessageList } from "@/components/chat/ChatUI";
+import { markChatNotificationsRead } from "@/components/NotificationBell";
 import { api } from "@/lib/api-client";
 import type { Coach, Message } from "@/lib/data";
-import Link from "next/link";
 
 export function CoachClient({
   userId,
@@ -27,8 +28,12 @@ export function CoachClient({
   const [attachment, setAttachment] = useState("");
 
   const coach = coaches.find((c) => c.id === coachId);
-  const coachName = coach?.name?.toUpperCase() ?? "COACH";
+  const coachName = coach?.name ?? "Coach";
   const messages = initialMessages;
+
+  useEffect(() => {
+    markChatNotificationsRead({ isAdmin: false }).catch(() => {});
+  }, [coachId]);
 
   async function send() {
     if ((!content.trim() && !attachment) || !coachId) return;
@@ -55,18 +60,18 @@ export function CoachClient({
   }
 
   return (
-    <div className="-mx-6 -mt-8 flex min-h-[calc(100vh-5rem)] flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-6 py-4">
+    <div className="-mx-6 -mt-8 flex min-h-[calc(100vh-5rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-800/80 bg-black/40 backdrop-blur-sm">
+      <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/80 px-6 py-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
           {coach?.profile_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={coach.profile_image_url}
               alt=""
-              className="h-10 w-10 rounded-full object-cover"
+              className="h-11 w-11 rounded-full object-cover ring-2 ring-zinc-800"
             />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800 ring-2 ring-zinc-800">
               <User className="h-5 w-5 text-zinc-500" />
             </div>
           )}
@@ -75,7 +80,7 @@ export function CoachClient({
               {coachName}
             </p>
             <p className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <span className="h-2 w-2 rounded-full bg-[#a3e635]" />
+              <span className="h-2 w-2 rounded-full bg-[#a3e635] shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
               Online
             </p>
           </div>
@@ -90,65 +95,45 @@ export function CoachClient({
         )}
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto bg-black px-6 py-6">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={
-              m.sender === "user" ? "flex justify-end" : "flex justify-start"
-            }
-          >
-            <div
-              className={
-                m.sender === "user"
-                  ? "max-w-[85%] rounded-2xl bg-zinc-800 px-4 py-2 text-sm text-white"
-                  : "max-w-[85%] space-y-2"
-              }
-            >
-              {m.attachment_base64 ? (
-                <div className="overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900">
-                  <p className="px-3 py-1 text-xs text-zinc-500">[Attachment]</p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.attachment_base64}
-                    alt=""
-                    className="max-h-80 w-full object-cover"
-                  />
-                </div>
-              ) : null}
-              {m.content && m.content !== "[Attachment]" && (
-                <p className="text-sm text-white">{m.content}</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <ChatMessageList
+        messages={messages}
+        isOwnMessage={(m) => m.sender === "user"}
+        peerAvatarUrl={coach?.profile_image_url}
+        peerLabel={coachName}
+        emptyHint="Send a message to your coach — they usually reply within a few hours."
+      />
 
-      <div className="flex items-center gap-3 border-t border-zinc-800 bg-zinc-950 px-4 py-4">
-        <label className="cursor-pointer text-white hover:text-zinc-300">
-          <Paperclip className="h-5 w-5" />
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onAttach(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        <Input
-          placeholder="Type a message..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          className="flex-1 border-zinc-700"
-        />
-        <button
-          type="button"
-          onClick={send}
-          className="text-xs font-bold uppercase text-zinc-500 hover:text-white"
-        >
-          Send
-        </button>
-      </div>
+      {attachment && (
+        <div className="border-t border-zinc-800/80 bg-zinc-950/80 px-4 py-2">
+          <div className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900 p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={attachment}
+              alt="Preview"
+              className="h-14 w-14 rounded-lg object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-white">Image attached</p>
+              <p className="text-[10px] text-zinc-500">Ready to send</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttachment("")}
+              className="text-xs text-zinc-500 hover:text-white"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ChatComposer
+        content={content}
+        onContentChange={setContent}
+        onSend={send}
+        onAttach={onAttach}
+        canSend={Boolean(content.trim() || attachment)}
+      />
     </div>
   );
 }

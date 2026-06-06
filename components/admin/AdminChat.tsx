@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Paperclip, Send, User } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+import { User } from "lucide-react";
+import { ChatComposer, ChatMessageList } from "@/components/chat/ChatUI";
+import { markChatNotificationsRead } from "@/components/NotificationBell";
 import { api } from "@/lib/api-client";
 import type { AdminClient, Coach, Message } from "@/lib/data";
 
@@ -26,6 +27,14 @@ export function AdminChat({
 
   const selected = clients.find((c) => c.id === selectedClientId);
   const messages = initialMessages;
+
+  useEffect(() => {
+    if (!selectedClientId) return;
+    markChatNotificationsRead({
+      isAdmin: true,
+      clientId: selectedClientId,
+    }).catch(() => {});
+  }, [selectedClientId]);
 
   async function send() {
     if ((!content.trim() && !attachment) || !selectedClientId || !coach) return;
@@ -97,69 +106,21 @@ export function AdminChat({
                 </div>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto p-5">
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={
-                      m.sender === "coach"
-                        ? "flex justify-end"
-                        : "flex justify-start"
-                    }
-                  >
-                    <div
-                      className={
-                        m.sender === "coach"
-                          ? "max-w-[80%] rounded-lg bg-[#a3e635] px-4 py-2 text-sm text-black"
-                          : "max-w-[80%] rounded-lg bg-zinc-800 px-4 py-2 text-sm text-white"
-                      }
-                    >
-                      {m.attachment_base64 ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={m.attachment_base64}
-                          alt=""
-                          className="mb-2 max-h-48 rounded object-cover"
-                        />
-                      ) : null}
-                      {m.content && m.content !== "[Attachment]" && (
-                        <p>{m.content}</p>
-                      )}
-                      <p className="mt-1 text-[10px] opacity-60">
-                        {new Date(m.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-3 border-t border-zinc-800 px-4 py-4">
-                <label className="cursor-pointer text-zinc-400 hover:text-white">
-                  <Paperclip className="h-5 w-5" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => onAttach(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-                <Input
-                  placeholder="Type a message..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && send()}
-                  className="flex-1 border-zinc-700"
+              <div className="flex min-h-0 flex-1 flex-col bg-black/50">
+                <ChatMessageList
+                  messages={messages}
+                  isOwnMessage={(m) => m.sender === "coach"}
+                  peerLabel={selected.name}
+                  emptyHint="Send a message to start coaching this client."
                 />
-                <button
-                  type="button"
-                  onClick={send}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#a3e635] text-black hover:bg-[#bef264]"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
+
+                <ChatComposer
+                  content={content}
+                  onContentChange={setContent}
+                  onSend={send}
+                  onAttach={onAttach}
+                  canSend={Boolean(content.trim() || attachment)}
+                />
               </div>
             </>
           ) : (
