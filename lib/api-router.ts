@@ -6,6 +6,7 @@ import { handleNutrition, handleAdminNutrition } from "./handlers/nutrition";
 import { handleMessages, handleCoaches } from "./handlers/messages";
 import { handleNotifications } from "./handlers/notifications";
 import { handleAdmin } from "./handlers/admin";
+import { handleFriends } from "./handlers/friends";
 import {
   handleFormChecks,
   handleStreak,
@@ -56,6 +57,8 @@ export async function handleApi(
         return handleAdminNutrition(req, ["admin", ...rest]);
       }
       return handleAdmin(req, ["admin", ...rest]);
+    case "friends":
+      return handleFriends(req, ["friends", ...rest]);
     case "form-checks":
       return handleFormChecks(req, ["form-checks", ...rest]);
     case "streak":

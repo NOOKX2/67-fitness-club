@@ -28,6 +28,10 @@ export async function getDb(): Promise<Db> {
 export async function ensureIndexes(): Promise<void> {
   const db = await getDb();
   await db.collection("users").createIndex("email", { unique: true });
+  await db.collection("friendships").createIndex("id", { unique: true });
+  await db.collection("friendships").createIndex({ requester_id: 1, recipient_id: 1 });
+  await db.collection("friend_messages").createIndex("id", { unique: true });
+  await db.collection("friend_messages").createIndex({ from_user_id: 1, to_user_id: 1 });
   await db.collection("login_attempts").createIndex("identifier");
   await db
     .collection("password_reset_tokens")

@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Award, Camera, Pencil, Trophy, User } from "lucide-react";
 import { ClientPageHeader } from "@/components/ClientPageHeader";
+import {
+  AddFriendButton,
+  AddFriendModal,
+} from "@/components/profile/AddFriendModal";
+import { FitnessInterestsSection } from "@/components/profile/FitnessInterestsSection";
+import {
+  FriendsSection,
+  type FriendRequestItem,
+  type ProfileFriend,
+} from "@/components/profile/FriendsSection";
+import { ProfileToast } from "@/components/profile/ProfileToast";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
 import { clientCard, clientCardInner, clientSectionLabel } from "@/lib/client-ui";
+import type { FitnessInterest } from "@/lib/fitness-interests";
 import type { LiftRecord } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import {
@@ -121,6 +133,40 @@ export function ProfileClient({
     weight: number;
     verifiedDate: string | null;
   } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [addFriendOpen, setAddFriendOpen] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(true);
+  const [fitnessInterests, setFitnessInterests] = useState<FitnessInterest[]>([]);
+  const [friends, setFriends] = useState<ProfileFriend[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequestItem[]>([]);
+  const [socialRefreshKey, setSocialRefreshKey] = useState(0);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+  }, []);
+
+  const loadSocial = useCallback(async () => {
+    setSocialLoading(true);
+    try {
+      const social = await api<{
+        fitness_interests: FitnessInterest[];
+        friends: ProfileFriend[];
+        pending_requests: FriendRequestItem[];
+      }>("friends/social");
+      setFitnessInterests(social.fitness_interests);
+      setFriends(social.friends);
+      setFriendRequests(social.pending_requests);
+      setSocialRefreshKey((key) => key + 1);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not load social profile");
+    } finally {
+      setSocialLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    loadSocial();
+  }, [loadSocial]);
 
   useEffect(() => {
     setRecords(initialRecords);
@@ -232,6 +278,16 @@ export function ProfileClient({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
+      <ProfileToast message={toast} onClose={() => setToast(null)} />
+      <AddFriendModal
+        open={addFriendOpen}
+        onClose={() => setAddFriendOpen(false)}
+        onSent={async (message) => {
+          showToast(message);
+          await loadSocial();
+        }}
+      />
+
       {verifiedCelebration && (
         <LiftVerifiedCelebration
           exercise={verifiedCelebration.exercise}
@@ -246,7 +302,8 @@ export function ProfileClient({
         title="My Profile"
         subtitle="Manage your account details"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <AddFriendButton onClick={() => setAddFriendOpen(true)} />
             {editing && (
               <button
                 type="button"
@@ -270,8 +327,24 @@ export function ProfileClient({
         }
       />
 
-      <section className={cn(clientCard, "p-6")}>
-        <div className="flex gap-6">
+      {socialLoading ? (
+        <section className={cn(clientCard, "p-6 text-center text-sm text-white/45")}>
+          Loading fitness interests…
+        </section>
+      ) : (
+        <FitnessInterestsSection
+          initialInterests={fitnessInterests}
+          onToast={showToast}
+          onSaved={(interests) => {
+            setFitnessInterests(interests);
+            setSocialRefreshKey((key) => key + 1);
+            loadSocial();
+          }}
+        />
+      )}
+
+      <section className={cn(clientCard, "p-4 sm:p-6")}>
+        <div className="flex flex-col gap-6 sm:flex-row">
           <div className="shrink-0">
             <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#6b93b8]/30">
               {avatarSrc ? (
@@ -432,20 +505,35 @@ export function ProfileClient({
         </div>
       </section>
 
-      <section className={cn(clientCard, "flex overflow-hidden p-0")}>
-        <div className={cn("flex-1 border-r border-white/10 p-6")}>
+      <section className={cn(clientCard, "grid grid-cols-1 overflow-hidden p-0 sm:grid-cols-3")}>
+        <div className={cn("border-b border-white/10 p-4 sm:border-b-0 sm:border-r sm:p-6")}>
           <FieldLabel>Current Tier</FieldLabel>
-          <p className="mt-2 text-3xl font-bold text-white">{user.tier_level}</p>
+          <p className="mt-2 text-2xl font-bold text-white sm:text-3xl">{user.tier_level}</p>
         </div>
-        <div className="flex-1 border-r border-white/10 p-6">
+        <div className={cn("border-b border-white/10 p-4 sm:border-b-0 sm:border-r sm:p-6")}>
           <FieldLabel>Member Since</FieldLabel>
-          <p className="mt-2 text-3xl font-bold text-white">{memberSince}</p>
+          <p className="mt-2 text-2xl font-bold text-white sm:text-3xl">{memberSince}</p>
         </div>
-        <div className="flex-1 p-6">
+        <div className="p-4 sm:p-6">
           <FieldLabel>Expiration</FieldLabel>
-          <p className="mt-2 text-3xl font-bold text-white">{expirationDate}</p>
+          <p className="mt-2 text-2xl font-bold text-white sm:text-3xl">{expirationDate}</p>
         </div>
       </section>
+
+      {socialLoading ? (
+        <section className={cn(clientCard, "p-6 text-center text-sm text-white/45")}>
+          Loading friends & chat…
+        </section>
+      ) : (
+        <FriendsSection
+          currentUserId={user.id}
+          initialFriends={friends}
+          initialRequests={friendRequests}
+          myInterests={fitnessInterests}
+          onToast={showToast}
+          refreshKey={socialRefreshKey}
+        />
+      )}
     </div>
   );
 }
