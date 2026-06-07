@@ -35,19 +35,38 @@ export async function saveExerciseVideoToGridFS(
   });
 }
 
-export async function openExerciseVideoStream(
+export async function getExerciseVideoFileMeta(
   db: Db,
   fileId: string
-): Promise<{ stream: NodeJS.ReadableStream; contentType: string } | null> {
+): Promise<{ contentType: string; size: number } | null> {
   const bucket = new GridFSBucket(db, { bucketName: BUCKET_NAME });
   const files = await bucket.find({ filename: fileId }).limit(1).toArray();
   if (!files.length) return null;
   return {
-    stream: bucket.openDownloadStreamByName(fileId),
     contentType:
       (files[0].metadata as { contentType?: string } | undefined)?.contentType ??
       "video/mp4",
+    size: files[0].length,
   };
+}
+
+export async function openExerciseVideoStream(
+  db: Db,
+  fileId: string,
+  range?: { start: number; end: number },
+  contentType = "video/mp4"
+): Promise<{ stream: NodeJS.ReadableStream; contentType: string } | null> {
+  const bucket = new GridFSBucket(db, { bucketName: BUCKET_NAME });
+  const streamOptions =
+    range != null ? { start: range.start, end: range.end + 1 } : undefined;
+  try {
+    return {
+      stream: bucket.openDownloadStreamByName(fileId, streamOptions),
+      contentType,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function streamFromBase64DataUrl(

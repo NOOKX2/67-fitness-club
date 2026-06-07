@@ -14,7 +14,7 @@ export type ExerciseVideoSource = {
 function hasPlayableVideo(video: ExerciseVideoSource): boolean {
   return Boolean(
     video.video_url ||
-      video.has_uploaded_file
+    video.has_uploaded_file
   );
 }
 
@@ -112,9 +112,9 @@ export function ExerciseVideoPlayer({
         className={
           compact
             ? cn(
-                "flex h-28 w-44 items-center justify-center rounded-xl bg-zinc-900 text-xs text-zinc-600",
-                className
-              )
+              "flex h-28 w-44 items-center justify-center rounded-xl bg-zinc-900 text-xs text-zinc-600",
+              className
+            )
             : "flex aspect-video w-full items-center justify-center rounded-xl bg-zinc-900 text-sm text-zinc-600"
         }
       >

@@ -36,7 +36,7 @@ export function AdminChat({
     markChatNotificationsRead({
       isAdmin: true,
       clientId: selectedClientId,
-    }).catch(() => {});
+    }).catch(() => { });
   }, [selectedClientId]);
 
   async function send() {

@@ -1,4 +1,3 @@
-import { Readable } from "stream";
 import { v4 as uuidv4 } from "uuid";
 import { ObjectId } from "mongodb";
 import { NextRequest } from "next/server";
@@ -6,10 +5,9 @@ import { getDb } from "../db";
 import { getAdminUser, hashPassword } from "../auth";
 import { json, error, parseBody, handleAuthError } from "../api-helpers";
 import {
-  openExerciseVideoStream,
   saveExerciseVideoToGridFS,
-  streamFromBase64DataUrl,
 } from "../exercise-video-storage";
+import { respondExerciseVideoStream } from "../video-stream-response";
 import { normalizeDateOnly, validateAccessDates, type Gender } from "../access";
 import { serializeCoach, type CoachDoc } from "../coach-utils";
 import {
@@ -253,21 +251,13 @@ export async function handleAdmin(
       if (!video) return error("Video not found", 404);
 
       const fileId = (video.video_file_id as string | undefined) ?? videoId;
-      const gridStream = await openExerciseVideoStream(db, fileId);
-      if (gridStream) {
-        return new Response(Readable.toWeb(gridStream.stream as Readable) as ReadableStream, {
-          headers: { "Content-Type": gridStream.contentType },
-        });
-      }
-
-      if (typeof video.video_base64 === "string" && video.video_base64) {
-        const inline = streamFromBase64DataUrl(video.video_base64);
-        if (inline) {
-          return new Response(new Uint8Array(inline.body), {
-            headers: { "Content-Type": inline.contentType },
-          });
-        }
-      }
+      const streamResponse = await respondExerciseVideoStream(
+        req,
+        db,
+        fileId,
+        video.video_base64
+      );
+      if (streamResponse) return streamResponse;
 
       return error("Video file not found", 404);
     }

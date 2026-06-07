@@ -16,7 +16,8 @@ import {
   profilePhotoStreamPath,
   saveProfilePhotoToGridFS,
 } from "../profile-photo-storage";
-import { streamFromBase64DataUrl, openExerciseVideoStream } from "../exercise-video-storage";
+import { streamFromBase64DataUrl } from "../exercise-video-storage";
+import { respondExerciseVideoStream } from "../video-stream-response";
 
 export async function handleFormChecks(
   req: NextRequest,
@@ -463,21 +464,13 @@ export async function handleExerciseVideo(
       if (!video) return error("Video not found", 404);
 
       const fileId = (video.video_file_id as string | undefined) ?? videoId;
-      const gridStream = await openExerciseVideoStream(db, fileId);
-      if (gridStream) {
-        return new Response(Readable.toWeb(gridStream.stream as Readable) as ReadableStream, {
-          headers: { "Content-Type": gridStream.contentType },
-        });
-      }
-
-      if (typeof video.video_base64 === "string" && video.video_base64) {
-        const inline = streamFromBase64DataUrl(video.video_base64);
-        if (inline) {
-          return new Response(new Uint8Array(inline.body), {
-            headers: { "Content-Type": inline.contentType },
-          });
-        }
-      }
+      const streamResponse = await respondExerciseVideoStream(
+        req,
+        db,
+        fileId,
+        video.video_base64
+      );
+      if (streamResponse) return streamResponse;
 
       return error("Video file not found", 404);
     }
