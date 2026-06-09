@@ -4,8 +4,27 @@ import { NextRequest } from "next/server";
 import {
   getExerciseVideoFileMeta,
   openExerciseVideoStream,
-  streamFromBase64DataUrl,
+  streamFromBase64DataUrl as exerciseStreamFromBase64,
 } from "./exercise-video-storage";
+import {
+  getFormCheckVideoFileMeta,
+  openFormCheckVideoStream,
+  streamFromBase64DataUrl as formCheckStreamFromBase64,
+} from "./form-check-video-storage";
+
+type VideoStorage = {
+  getFileMeta: (
+    db: Db,
+    fileId: string
+  ) => Promise<{ contentType: string; size: number } | null>;
+  openStream: (
+    db: Db,
+    fileId: string,
+    range?: { start: number; end: number },
+    contentType?: string
+  ) => Promise<{ stream: NodeJS.ReadableStream; contentType: string } | null>;
+  streamFromBase64: (dataUrl: string) => { body: Buffer; contentType: string } | null;
+};
 
 export function parseByteRange(
   rangeHeader: string,
@@ -45,19 +64,20 @@ function videoStreamHeaders(
   };
 }
 
-export async function respondExerciseVideoStream(
+async function respondGridFsVideoStream(
   req: NextRequest,
   db: Db,
+  storage: VideoStorage,
   fileId: string,
   fallbackBase64?: string | null
 ): Promise<Response | null> {
   const rangeHeader = req.headers.get("range");
-  const fileMeta = await getExerciseVideoFileMeta(db, fileId);
+  const fileMeta = await storage.getFileMeta(db, fileId);
 
   if (fileMeta) {
     const range =
       rangeHeader != null ? parseByteRange(rangeHeader, fileMeta.size) : null;
-    const gridStream = await openExerciseVideoStream(
+    const gridStream = await storage.openStream(
       db,
       fileId,
       range ?? undefined,
@@ -79,7 +99,7 @@ export async function respondExerciseVideoStream(
   }
 
   if (typeof fallbackBase64 === "string" && fallbackBase64) {
-    const inline = streamFromBase64DataUrl(fallbackBase64);
+    const inline = storage.streamFromBase64(fallbackBase64);
     if (inline) {
       const size = inline.body.length;
       const range =
@@ -100,4 +120,42 @@ export async function respondExerciseVideoStream(
   }
 
   return null;
+}
+
+export async function respondExerciseVideoStream(
+  req: NextRequest,
+  db: Db,
+  fileId: string,
+  fallbackBase64?: string | null
+): Promise<Response | null> {
+  return respondGridFsVideoStream(
+    req,
+    db,
+    {
+      getFileMeta: getExerciseVideoFileMeta,
+      openStream: openExerciseVideoStream,
+      streamFromBase64: exerciseStreamFromBase64,
+    },
+    fileId,
+    fallbackBase64
+  );
+}
+
+export async function respondFormCheckVideoStream(
+  req: NextRequest,
+  db: Db,
+  fileId: string,
+  fallbackBase64?: string | null
+): Promise<Response | null> {
+  return respondGridFsVideoStream(
+    req,
+    db,
+    {
+      getFileMeta: getFormCheckVideoFileMeta,
+      openStream: openFormCheckVideoStream,
+      streamFromBase64: formCheckStreamFromBase64,
+    },
+    fileId,
+    fallbackBase64
+  );
 }

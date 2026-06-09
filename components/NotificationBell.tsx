@@ -2,8 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, MessageCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity,
+  Apple,
+  Bell,
+  Camera,
+  CheckCircle,
+  Dumbbell,
+  MessageCircle,
+  Scale,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
+import { ADMIN_ACTIVITY_LABELS, type AdminActivityType } from "@/lib/admin-notifications";
 import { api } from "@/lib/api-client";
 import type { AppNotification, NotificationFeed } from "@/lib/notification-types";
 import { cn } from "@/lib/utils";
@@ -21,19 +33,158 @@ function formatWhen(iso: string) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+const LEGACY_TYPE_MAP: Record<string, AdminActivityType> = {
+  form_check_submitted: "form_check",
+};
+
+function resolveActivityType(notification: AppNotification): AdminActivityType | null {
+  const mapped = LEGACY_TYPE_MAP[notification.type];
+  if (mapped) return mapped;
+  if (notification.type in ADMIN_ACTIVITY_LABELS) {
+    return notification.type as AdminActivityType;
+  }
+  return null;
+}
+
+const ACTIVITY_STYLES: Record<
+  AdminActivityType,
+  { icon: LucideIcon; badge: string; iconBg: string }
+> = {
+  form_check: {
+    icon: CheckCircle,
+    badge: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
+    iconBg: "bg-amber-500/15 text-amber-400",
+  },
+  nutrition: {
+    icon: Apple,
+    badge: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
+    iconBg: "bg-emerald-500/15 text-emerald-400",
+  },
+  workout: {
+    icon: Dumbbell,
+    badge: "bg-[#6B93B8]/20 text-[#A8C5DC] ring-[#6B93B8]/30",
+    iconBg: "bg-[#6B93B8]/15 text-[#6B93B8]",
+  },
+  cardio: {
+    icon: Activity,
+    badge: "bg-cyan-500/15 text-cyan-400 ring-cyan-500/30",
+    iconBg: "bg-cyan-500/15 text-cyan-400",
+  },
+  weight: {
+    icon: Scale,
+    badge: "bg-violet-500/15 text-violet-400 ring-violet-500/30",
+    iconBg: "bg-violet-500/15 text-violet-400",
+  },
+  progress_photo: {
+    icon: Camera,
+    badge: "bg-rose-500/15 text-rose-400 ring-rose-500/30",
+    iconBg: "bg-rose-500/15 text-rose-400",
+  },
+  lift_pr: {
+    icon: Trophy,
+    badge: "bg-yellow-500/15 text-yellow-400 ring-yellow-500/30",
+    iconBg: "bg-yellow-500/15 text-yellow-400",
+  },
+  client_message: {
+    icon: MessageCircle,
+    badge: "bg-zinc-500/15 text-zinc-300 ring-zinc-500/30",
+    iconBg: "bg-[#6B93B8]/15 text-[#6B93B8]",
+  },
+};
+
 function notificationHref(notification: AppNotification, isAdmin: boolean) {
+  if (notification.link) return notification.link;
   if (notification.type === "coach_message") return "/coach";
   if (notification.type === "client_message" && notification.client_id) {
     return `/admin/chat?client=${encodeURIComponent(notification.client_id)}`;
   }
   if (notification.type === "form_feedback") return "/profile";
-  return isAdmin ? "/admin/chat" : "/coach";
+  if (notification.type === "form_check_submitted" && notification.client_id) {
+    return `/admin/form-checks`;
+  }
+  return isAdmin ? "/admin" : "/coach";
 }
 
 function isChatNotification(notification: AppNotification) {
   return (
     notification.type === "coach_message" ||
     notification.type === "client_message"
+  );
+}
+
+function activityLabel(notification: AppNotification) {
+  if (notification.category) return notification.category;
+  const type = resolveActivityType(notification);
+  if (type) return ADMIN_ACTIVITY_LABELS[type];
+  if (notification.type === "coach_message") return "Coach";
+  return null;
+}
+
+function clientDisplayName(notification: AppNotification) {
+  if (notification.client_name) return notification.client_name;
+  if (isAdminActivity(notification)) return notification.title;
+  return notification.title;
+}
+
+function isAdminActivity(notification: AppNotification) {
+  return Boolean(resolveActivityType(notification) || notification.client_id);
+}
+
+function AdminNotificationRow({
+  notification,
+  onOpen,
+}: {
+  notification: AppNotification;
+  onOpen: (n: AppNotification) => void;
+}) {
+  const activityType = resolveActivityType(notification);
+  const style = activityType ? ACTIVITY_STYLES[activityType] : null;
+  const Icon = style?.icon ?? MessageCircle;
+  const label = activityLabel(notification);
+  const name = clientDisplayName(notification);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(notification)}
+      className={cn(
+        "flex w-full gap-3 border-b border-zinc-800/80 px-4 py-3 text-left transition-colors hover:bg-zinc-900",
+        !notification.read && "bg-zinc-900/60"
+      )}
+    >
+      <div
+        className={cn(
+          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          style?.iconBg ?? "bg-zinc-800 text-zinc-400"
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {label && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset",
+                style?.badge ?? "bg-zinc-800 text-zinc-400 ring-zinc-700"
+              )}
+            >
+              {label}
+            </span>
+          )}
+          {!notification.read && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#6B93B8]" />
+          )}
+        </div>
+        <p className="mt-1.5 text-sm font-bold text-white">{name}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
+          {notification.message}
+        </p>
+        <p className="mt-1 text-[10px] text-zinc-600">
+          {formatWhen(notification.created_at)}
+        </p>
+      </div>
+    </button>
   );
 }
 
@@ -108,6 +259,18 @@ export function NotificationBell({ isAdmin = false }: { isAdmin?: boolean }) {
     router.push(notificationHref(notification, isAdmin));
   }
 
+  const activitySummary = useMemo(() => {
+    if (!isAdmin) return [];
+    const counts = new Map<string, number>();
+    for (const n of feed.notifications) {
+      if (n.read) continue;
+      const label = activityLabel(n);
+      if (!label) continue;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [feed.notifications, isAdmin]);
+
   const chatUnread = feed.notifications.filter(
     (n) => !n.read && isChatNotification(n)
   ).length;
@@ -122,20 +285,33 @@ export function NotificationBell({ isAdmin = false }: { isAdmin?: boolean }) {
       >
         <Bell className="h-5 w-5" strokeWidth={1.5} />
         {feed.unread_count > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a3e635] px-1 text-[9px] font-bold text-black">
+          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#6B93B8] px-1 text-[9px] font-bold text-white">
             {feed.unread_count > 9 ? "9+" : feed.unread_count}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+        <div className="absolute right-0 top-10 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-white">
-                Notifications
+                {isAdmin ? "Client Activity" : "Notifications"}
               </p>
-              {chatUnread > 0 && (
+              {isAdmin && activitySummary.length > 0 && (
+                <p className="mt-1 flex flex-wrap gap-1.5">
+                  {activitySummary.map(([label, count]) => (
+                    <span
+                      key={label}
+                      className="text-[10px] font-medium text-zinc-500"
+                    >
+                      {count} {label}
+                      {count === 1 ? "" : ""}
+                    </span>
+                  ))}
+                </p>
+              )}
+              {!isAdmin && chatUnread > 0 && (
                 <p className="mt-0.5 text-[10px] text-zinc-500">
                   {chatUnread} new chat message{chatUnread === 1 ? "" : "s"}
                 </p>
@@ -145,7 +321,7 @@ export function NotificationBell({ isAdmin = false }: { isAdmin?: boolean }) {
               <button
                 type="button"
                 onClick={markAllRead}
-                className="text-[10px] font-semibold uppercase tracking-wide text-[#a3e635] hover:text-[#bef264]"
+                className="text-[10px] font-semibold uppercase tracking-wide text-[#6B93B8] hover:text-[#A8C5DC]"
               >
                 Mark all read
               </button>
@@ -158,59 +334,62 @@ export function NotificationBell({ isAdmin = false }: { isAdmin?: boolean }) {
                 No notifications yet
               </p>
             ) : (
-              feed.notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  type="button"
-                  onClick={() => openNotification(notification)}
-                  className={cn(
-                    "flex w-full gap-3 border-b border-zinc-800/80 px-4 py-3 text-left transition-colors hover:bg-zinc-900",
-                    !notification.read && "bg-zinc-900/60"
-                  )}
-                >
-                  <div
+              feed.notifications.map((notification) =>
+                isAdmin && isAdminActivity(notification) ? (
+                  <AdminNotificationRow
+                    key={notification.id}
+                    notification={notification}
+                    onOpen={openNotification}
+                  />
+                ) : (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    onClick={() => openNotification(notification)}
                     className={cn(
-                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                      isChatNotification(notification)
-                        ? "bg-[#a3e635]/15 text-[#a3e635]"
-                        : "bg-zinc-800 text-zinc-400"
+                      "flex w-full gap-3 border-b border-zinc-800/80 px-4 py-3 text-left transition-colors hover:bg-zinc-900",
+                      !notification.read && "bg-zinc-900/60"
                     )}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-white">
-                        {notification.title}
-                      </p>
-                      {!notification.read && (
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#a3e635]" />
+                    <div
+                      className={cn(
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        isChatNotification(notification)
+                          ? "bg-[#6B93B8]/15 text-[#6B93B8]"
+                          : "bg-zinc-800 text-zinc-400"
                       )}
+                    >
+                      <MessageCircle className="h-4 w-4" />
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
-                      {notification.message}
-                    </p>
-                    {notification.client_name && isAdmin && (
-                      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                        {notification.client_name}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-white">
+                          {notification.title}
+                        </p>
+                        {!notification.read && (
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#6B93B8]" />
+                        )}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
+                        {notification.message}
                       </p>
-                    )}
-                    <p className="mt-1 text-[10px] text-zinc-600">
-                      {formatWhen(notification.created_at)}
-                    </p>
-                  </div>
-                </button>
-              ))
+                      <p className="mt-1 text-[10px] text-zinc-600">
+                        {formatWhen(notification.created_at)}
+                      </p>
+                    </div>
+                  </button>
+                )
+              )
             )}
           </div>
 
           <div className="border-t border-zinc-800 px-4 py-3">
             <Link
-              href={isAdmin ? "/admin/chat" : "/coach"}
+              href={isAdmin ? "/admin" : "/coach"}
               onClick={() => setOpen(false)}
               className="block text-center text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-white"
             >
-              Open chat
+              {isAdmin ? "Open dashboard" : "Open chat"}
             </Link>
           </div>
         </div>

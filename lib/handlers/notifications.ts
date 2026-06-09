@@ -74,6 +74,11 @@ export async function handleNotifications(
           user_id: n.user_id ? String(n.user_id) : undefined,
           client_id: n.client_id ? String(n.client_id) : undefined,
           client_name: n.client_name ? String(n.client_name) : undefined,
+          category: n.category ? String(n.category) : undefined,
+          link: n.link ? String(n.link) : undefined,
+          week: typeof n.week === "number" ? n.week : undefined,
+          day: typeof n.day === "number" ? n.day : undefined,
+          date: n.date ? String(n.date) : undefined,
         })),
         unread_count,
       });

@@ -37,6 +37,7 @@ export function EditClientModal({
     gender: (client.gender as Gender) || "prefer_not_to_say",
     access_starts_at: normalizeDateOnly(client.access_starts_at) ?? "",
     access_expires_at: normalizeDateOnly(client.access_expires_at) ?? "",
+    tdee: client.tdee != null ? String(client.tdee) : "",
   });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -59,6 +60,7 @@ export function EditClientModal({
           gender: form.gender,
           access_starts_at: form.access_starts_at || null,
           access_expires_at: form.access_expires_at || null,
+          tdee: form.tdee ? Number(form.tdee) : null,
         }),
       });
       const updated: AdminClient = res.client ?? {
@@ -68,6 +70,7 @@ export function EditClientModal({
         gender: form.gender,
         access_starts_at: form.access_starts_at || null,
         access_expires_at: form.access_expires_at || null,
+        tdee: form.tdee ? Number(form.tdee) : null,
       };
       onSaved(updated);
       setMessage("Client updated");
@@ -137,6 +140,20 @@ export function EditClientModal({
             </select>
           </div>
 
+          <div>
+            <FieldLabel>TDEE (kcal / day)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              value={form.tdee}
+              onChange={(e) => setForm({ ...form, tdee: e.target.value })}
+              placeholder="e.g. 2200"
+            />
+            <p className="mt-1 text-[10px] text-zinc-600">
+              Daily maintenance calories — used on the Progress page
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel>Access Starts</FieldLabel>
@@ -162,7 +179,7 @@ export function EditClientModal({
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
-          {message && <p className="text-sm text-[#a3e635]">{message}</p>}
+          {message && <p className="text-sm text-[#6B93B8]">{message}</p>}
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" className="flex-1" disabled={loading}>

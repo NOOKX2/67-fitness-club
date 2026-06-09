@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { getDb } from "../db";
 import { getCurrentUser, getAdminUser } from "../auth";
 import { json, error, parseBody, handleAuthError } from "../api-helpers";
+import { createAdminNotification } from "../admin-notifications";
 
 export async function handleNutrition(
   req: NextRequest,
@@ -148,6 +149,17 @@ export async function handleNutrition(
         user_email: userDoc?.email ?? "",
       };
       await db.collection("meal_submissions_v2").insertOne(doc);
+      const mealLabel =
+        meal.meal_type === "custom" && meal.custom_name
+          ? String(meal.custom_name)
+          : `Meal ${meal.meal_number ?? ""}`.trim();
+      await createAdminNotification(db, {
+        type: "nutrition",
+        clientId: String(meal.user_id),
+        clientName: doc.user_name,
+        message: mealLabel || "Meal submitted",
+        date: doc.submitted_at.slice(0, 10),
+      });
       return json(doc);
     }
 

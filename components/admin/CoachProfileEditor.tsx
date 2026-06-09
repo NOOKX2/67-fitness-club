@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
 import type { Coach } from "@/lib/data";
+import { MOBILE_FILE_INPUT_CLASS, readImageDataUrl } from "@/lib/file-upload";
 
 export function CoachProfileEditor({ coach }: { coach: Coach }) {
   const router = useRouter();
@@ -24,15 +25,17 @@ export function CoachProfileEditor({ coach }: { coach: Coach }) {
     setPhotoBase64("");
   }, [coach.name, coach.profile_image_url]);
 
-  function onPhotoSelect(file: File | null) {
+  async function onPhotoSelect(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
+    try {
+      const result = await readImageDataUrl(file);
       setAvatarSrc(result);
       setPhotoBase64(result);
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setError("Could not read photo");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   async function save(e: React.FormEvent) {
@@ -70,7 +73,7 @@ export function CoachProfileEditor({ coach }: { coach: Coach }) {
       onSubmit={save}
       className="mb-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5"
     >
-      <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#a3e635]">
+      <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#6B93B8]">
         Coach Profile
       </p>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -87,7 +90,9 @@ export function CoachProfileEditor({ coach }: { coach: Coach }) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            className="hidden"
+            className={MOBILE_FILE_INPUT_CLASS}
+            aria-hidden
+            tabIndex={-1}
             onChange={(e) => onPhotoSelect(e.target.files?.[0] ?? null)}
           />
           <button
@@ -113,7 +118,7 @@ export function CoachProfileEditor({ coach }: { coach: Coach }) {
             Shown to clients on the Coach chat page.
           </p>
           {error && <p className="text-xs text-red-400">{error}</p>}
-          {message && <p className="text-xs text-[#a3e635]">{message}</p>}
+          {message && <p className="text-xs text-[#6B93B8]">{message}</p>}
           <Button type="submit" disabled={loading || !name.trim()}>
             {loading ? "Saving…" : "Save Coach Profile"}
           </Button>

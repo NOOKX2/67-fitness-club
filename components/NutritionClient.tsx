@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 import { NutritionHeader } from "@/components/NutritionHeader";
 import { NutritionScoreChart } from "@/components/NutritionScoreChart";
 import type { DailyNutritionScore, MealSubmission, NutritionLimits } from "@/lib/data";
@@ -50,6 +51,7 @@ export function NutritionClient({
     (limits.carbs ?? 0) > 0 ||
     (limits.fat ?? 0) > 0;
   const showDailyTotals = meals.length > 0 || hasLimits;
+  const { t } = useLanguage();
 
   return (
     <div className="space-y-6">
@@ -57,11 +59,11 @@ export function NutritionClient({
 
       {showDailyTotals && (
         <div className={cn(clientCard, "p-4 sm:p-5")}>
-          <p className={clientSectionLabel}>Daily Totals</p>
+          <p className={clientSectionLabel}>{t("nutrition.dailyTotals")}</p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
             <div className={cn(clientCardInner, "px-4 py-4 text-center")}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                Total Kcal
+                {t("nutrition.totalKcal")}
               </p>
               <p
                 className={`mt-1 text-3xl font-bold ${limitValueClass(totalKcal, limits.calories)}`}
@@ -75,7 +77,7 @@ export function NutritionClient({
             </div>
             <div className={cn(clientCardInner, "px-4 py-4 text-center")}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                Overall Food Score
+                {t("nutrition.overallFoodScore")}
               </p>
               {overallScore != null && overallStyle ? (
                 <p className={`mt-1 text-3xl font-bold ${overallStyle.className}`}>
@@ -93,21 +95,19 @@ export function NutritionClient({
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
-            <MacroLimitBox label="Protein" consumed={totals.protein} limit={limits.protein} />
-            <MacroLimitBox label="Carb" consumed={totals.carbs} limit={limits.carbs} />
-            <MacroLimitBox label="Fat" consumed={totals.fat} limit={limits.fat} />
+            <MacroLimitBox label={t("nutrition.protein")} consumed={totals.protein} limit={limits.protein} />
+            <MacroLimitBox label={t("nutrition.carb")} consumed={totals.carbs} limit={limits.carbs} />
+            <MacroLimitBox label={t("nutrition.fat")} consumed={totals.fat} limit={limits.fat} />
           </div>
         </div>
       )}
 
       <div>
-        <p className={cn(clientSectionLabel, "mb-4")}>Today&apos;s Meals</p>
+        <p className={cn(clientSectionLabel, "mb-4")}>{t("nutrition.todaysMeals")}</p>
         {meals.length === 0 ? (
           <div className={cn(clientCard, "overflow-hidden")}>
             <p className="p-8 text-center text-white/45">
-              {isToday
-                ? "No meals logged today. Tap + Add Meal to submit to your coach."
-                : "No meals logged on this day."}
+              {isToday ? t("nutrition.noMealsToday") : t("nutrition.noMealsDay")}
             </p>
           </div>
         ) : (
@@ -129,7 +129,7 @@ export function NutritionClient({
       </div>
 
       <div className={cn(clientCard, "p-4 sm:p-5")}>
-        <p className={clientSectionLabel}>7-Day Food Score</p>
+        <p className={clientSectionLabel}>{t("nutrition.foodScore7Day")}</p>
         <div className="mt-4">
           <NutritionScoreChart dailyScores={chartScores} />
         </div>

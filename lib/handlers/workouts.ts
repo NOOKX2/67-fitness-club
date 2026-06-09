@@ -2,7 +2,9 @@ import { v4 as uuidv4 } from "uuid";
 import { NextRequest } from "next/server";
 import { getDb } from "../db";
 import { getCurrentUser, getAdminUser } from "../auth";
+import { ObjectId } from "mongodb";
 import { json, error, parseBody, handleAuthError } from "../api-helpers";
+import { createAdminNotification } from "../admin-notifications";
 
 const DEFAULT_IMAGE =
   "https://images.unsplash.com/photo-1574680096145-d05b474e2155?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwyfHxneW0lMjB3b3Jrb3V0JTIwYmFyYmVsbHxlbnwwfHx8YmxhY2tfYW5kX3doaXRlfDE3ODA0OTQ2MjR8MA&ixlib=rb-4.1.0&q=85";
@@ -53,6 +55,7 @@ export async function handleWorkouts(
         day: number;
         actual_weight: string;
         actual_reps: string;
+        sets?: Array<{ weight: string; reps: string }>;
         form_video_base64?: string;
       }>(req);
       if (log.user_id !== user.id) return error("Access denied", 403);
@@ -62,14 +65,44 @@ export async function handleWorkouts(
         week: log.week,
         day: log.day,
       };
+      const cleanedSets =
+        log.sets
+          ?.map((set) => ({
+            weight: String(set.weight ?? "").trim(),
+            reps: String(set.reps ?? "").trim(),
+          }))
+          .filter((set) => set.weight || set.reps) ?? [];
       const doc = {
         id: uuidv4(),
-        ...log,
+        user_id: log.user_id,
+        exercise_id: log.exercise_id,
+        week: log.week,
+        day: log.day,
+        actual_weight:
+          cleanedSets.length > 0
+            ? cleanedSets[0].weight
+            : String(log.actual_weight ?? ""),
+        actual_reps:
+          cleanedSets.length > 0
+            ? cleanedSets.map((set) => set.reps).join(", ")
+            : String(log.actual_reps ?? ""),
+        sets: cleanedSets.length > 0 ? cleanedSets : undefined,
         form_video_base64: log.form_video_base64 ?? "",
         timestamp: new Date().toISOString(),
       };
       await db.collection("workout_logs").deleteMany(query);
       await db.collection("workout_logs").insertOne(doc);
+      const userDoc = await db.collection("users").findOne({
+        _id: new ObjectId(log.user_id),
+      });
+      await createAdminNotification(db, {
+        type: "workout",
+        clientId: log.user_id,
+        clientName: userDoc?.name ? String(userDoc.name) : "Client",
+        message: `Week ${log.week}, Day ${log.day} workout logged`,
+        week: log.week,
+        day: log.day,
+      });
       return json(doc);
     }
 
@@ -101,6 +134,17 @@ export async function handleWorkouts(
       };
       await db.collection("cardio_logs").deleteMany(query);
       await db.collection("cardio_logs").insertOne(doc);
+      const cardioUser = await db.collection("users").findOne({
+        _id: new ObjectId(log.user_id),
+      });
+      await createAdminNotification(db, {
+        type: "cardio",
+        clientId: log.user_id,
+        clientName: cardioUser?.name ? String(cardioUser.name) : "Client",
+        message: `Week ${log.week}, Day ${log.day} cardio logged`,
+        week: log.week,
+        day: log.day,
+      });
       return json(doc);
     }
 

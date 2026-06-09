@@ -68,6 +68,9 @@ export async function requireAppUser(): Promise<User> {
   }
   return {
     ...user,
+    access_starts_at: normalizeDateOnly(
+      doc?.access_starts_at ? String(doc.access_starts_at) : null
+    ),
     access_expires_at: normalizeDateOnly(
       doc?.access_expires_at ? String(doc.access_expires_at) : null
     ),

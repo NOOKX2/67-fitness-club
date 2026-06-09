@@ -19,7 +19,6 @@ export default async function CoachPage({
   return (
     <CoachClient
       userId={user.id}
-      tierLevel={user.tier_level}
       coaches={coaches}
       coachId={coachId}
       initialMessages={messages}

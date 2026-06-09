@@ -4,23 +4,27 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, X } from "lucide-react";
+import { FilePicker } from "@/components/FilePicker";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
+import { useLanguage } from "@/components/LanguageProvider";
 import { NutritionHeader } from "@/components/NutritionHeader";
 import { useMuscleReward } from "@/components/MuscleStreakContext";
 import { api } from "@/lib/api-client";
 import { clientCard, clientField } from "@/lib/client-ui";
+import { readImageDataUrl } from "@/lib/file-upload";
 import { cn } from "@/lib/utils";
 
-const MEAL_OPTIONS = [
-  { value: 1, label: "Meal 1" },
-  { value: 2, label: "Meal 2" },
-  { value: 3, label: "Meal 3" },
-  { value: 4, label: "Meal 4" },
-];
+const MEAL_OPTION_KEYS = [
+  { value: 1, labelKey: "nutrition.meal1" },
+  { value: 2, labelKey: "nutrition.meal2" },
+  { value: 3, labelKey: "nutrition.meal3" },
+  { value: 4, labelKey: "nutrition.meal4" },
+] as const;
 
 export function NutritionSubmitClient({ userId }: { userId: string }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const { celebrateMuscleTask } = useMuscleReward();
   const [mealNumber, setMealNumber] = useState(1);
   const [customName, setCustomName] = useState("");
@@ -28,21 +32,30 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState("");
   const [photoName, setPhotoName] = useState("");
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  function onPhoto(f: File | null) {
-    if (!f) return;
-    setPhotoName(f.name);
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result as string);
-    reader.readAsDataURL(f);
+  async function onPhoto(file: File) {
+    setPhotoLoading(true);
+    setError("");
+    try {
+      const dataUrl = await readImageDataUrl(file);
+      setPhoto(dataUrl);
+      setPhotoName(file.name);
+    } catch {
+      setPhoto("");
+      setPhotoName("");
+      setError(t("nutrition.photoReadError"));
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   async function submitMeal(e: React.FormEvent) {
     e.preventDefault();
     if (!photo) {
-      setError("Please add a meal photo");
+      setError(t("nutrition.photoRequired"));
       return;
     }
     setError("");
@@ -77,7 +90,7 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
       <form onSubmit={submitMeal} className={cn(clientCard, "mx-auto mt-10 max-w-2xl p-8")}>
         <div className="mb-8 flex items-center justify-between">
           <h2 className="text-xl font-bold uppercase tracking-wide text-white">
-            Submit Meal
+            {t("nutrition.submitTitle")}
           </h2>
           <Link
             href="/nutrition"
@@ -91,31 +104,31 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <FieldLabel>Meal Number</FieldLabel>
+              <FieldLabel>{t("nutrition.mealNumber")}</FieldLabel>
               <select
                 value={mealNumber}
                 onChange={(e) => setMealNumber(Number(e.target.value))}
                 className={cn("w-full px-4 py-3 text-sm text-white focus:outline-none", clientField)}
               >
-                {MEAL_OPTIONS.map((m) => (
+                {MEAL_OPTION_KEYS.map((m) => (
                   <option key={m.value} value={m.value}>
-                    {m.label}
+                    {t(m.labelKey)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <FieldLabel>Custom Meal Name (optional)</FieldLabel>
+              <FieldLabel>{t("nutrition.customMealName")}</FieldLabel>
               <Input
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                placeholder="e.g., Pre-workout snack"
+                placeholder={t("nutrition.customMealPlaceholder")}
               />
             </div>
           </div>
 
           <div>
-            <FieldLabel>Weight (grams)</FieldLabel>
+            <FieldLabel>{t("nutrition.weightGrams")}</FieldLabel>
             <Input
               type="number"
               value={weight}
@@ -125,29 +138,34 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
           </div>
 
           <div>
-            <FieldLabel>Meal Description</FieldLabel>
+            <FieldLabel>{t("nutrition.mealDescription")}</FieldLabel>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your meal... (e.g., Grilled chicken with rice and vegetables)"
+              placeholder={t("nutrition.mealDescriptionPlaceholder")}
               rows={5}
               className={cn("w-full resize-none px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none", clientField)}
             />
           </div>
 
           <div>
-            <FieldLabel>Meal Photo</FieldLabel>
-            <label className={cn("flex h-14 w-full cursor-pointer items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-white transition-colors hover:border-white/25", clientField)}>
+            <FieldLabel>{t("nutrition.mealPhoto")}</FieldLabel>
+            <FilePicker
+              accept="image/*"
+              disabled={photoLoading || submitting}
+              onFile={onPhoto}
+              className={cn(
+                "flex h-14 w-full items-center justify-center gap-2 text-sm font-medium uppercase tracking-wide text-white transition-colors hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-60",
+                clientField
+              )}
+            >
               <Camera className="h-5 w-5" />
-              {photoName ? photoName : "Take/Upload Photo"}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
-              />
-            </label>
+              {photoLoading
+                ? t("common.loadingPhoto")
+                : photoName
+                  ? photoName
+                  : t("nutrition.takeUploadPhoto")}
+            </FilePicker>
             {photo && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -163,13 +181,13 @@ export function NutritionSubmitClient({ userId }: { userId: string }) {
           <Button
             type="submit"
             className="h-14 w-full text-sm"
-            disabled={submitting || !photo}
+            disabled={submitting || photoLoading || !photo}
           >
-            {submitting ? "Submitting…" : "Submit to Coach"}
+            {submitting ? t("nutrition.submitting") : t("nutrition.submitToCoach")}
           </Button>
 
           <p className="text-center text-xs text-zinc-500">
-            Your coach will review and provide feedback
+            {t("nutrition.coachReviewNote")}
           </p>
         </div>
       </form>

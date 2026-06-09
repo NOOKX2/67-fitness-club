@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { BRAND_NAME, LOGO_FULL } from "@/lib/brand";
 import "./globals.css";
 
 const geist = Geist({
@@ -8,8 +9,15 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "FitPro — Fitness Coaching",
-  description: "Full-stack fitness coaching and tracking",
+  title: {
+    default: BRAND_NAME,
+    template: `%s — ${BRAND_NAME}`,
+  },
+  description: "Elite performance training — strength, flexibility, and clarity.",
+  icons: {
+    icon: LOGO_FULL,
+    apple: LOGO_FULL,
+  },
 };
 
 export default function RootLayout({

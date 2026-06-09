@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
 import type { FormCheckSubmission } from "@/lib/data";
+import { formCheckVideoStreamPath } from "@/lib/form-check-constants";
 
 export function FormCheckQueue({
   submissions,
@@ -72,12 +73,18 @@ export function FormCheckQueue({
                 <p className="mt-1 text-xs text-zinc-500">
                   Submitted {s.submitted_at?.slice(0, 10) ?? "—"}
                 </p>
-                {s.video_base64 && (
+                {s.video_file_id || s.video_base64 ? (
                   <video
-                    src={s.video_base64}
+                    src={formCheckVideoStreamPath(s.id)}
                     controls
-                    className="mt-4 max-h-64 w-full max-w-md"
+                    playsInline
+                    preload="metadata"
+                    className="mt-4 max-h-64 w-full max-w-md rounded-lg bg-black"
                   />
+                ) : (
+                  <p className="mt-4 text-sm text-amber-400">
+                    Video unavailable — client may need to re-upload
+                  </p>
                 )}
                 <div className="mt-4 max-w-xl space-y-3">
                   <div>
@@ -94,7 +101,7 @@ export function FormCheckQueue({
                   </div>
                   <Button
                     type="button"
-                    className="h-10 gap-2 bg-[#a3e635] text-xs text-black"
+                    className="h-10 gap-2 bg-[#6B93B8] text-xs text-white"
                     onClick={() => saveFeedback(s.id)}
                     disabled={savingId === s.id}
                   >
@@ -105,7 +112,7 @@ export function FormCheckQueue({
                     <p
                       className={`text-sm ${
                         messages[s.id] === "Feedback saved"
-                          ? "text-[#a3e635]"
+                          ? "text-[#6B93B8]"
                           : "text-red-400"
                       }`}
                     >

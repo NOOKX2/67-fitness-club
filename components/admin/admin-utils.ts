@@ -25,7 +25,7 @@ export function accessStatusLabel(client: {
 }): { label: string; className: string } {
   const status = getAccessStatus(client);
   if (status === "active") {
-    return { label: "Active", className: "text-[#a3e635]" };
+    return { label: "Active", className: "text-[#6B93B8]" };
   }
   if (status === "expired") {
     return { label: "Expired", className: "text-red-400" };

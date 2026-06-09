@@ -17,10 +17,12 @@ import {
 import { ProfileToast } from "@/components/profile/ProfileToast";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
+import { useLanguage } from "@/components/LanguageProvider";
 import { api } from "@/lib/api-client";
 import { clientCard, clientCardInner, clientSectionLabel } from "@/lib/client-ui";
 import type { FitnessInterest } from "@/lib/fitness-interests";
 import type { LiftRecord } from "@/lib/data";
+import { MOBILE_FILE_INPUT_CLASS, readImageDataUrl } from "@/lib/file-upload";
 import { cn } from "@/lib/utils";
 import {
   formatLiftAmount,
@@ -83,15 +85,15 @@ function LiftVerifiedCelebration({
 
   return (
     <div className="fixed inset-x-0 top-20 z-[100] flex justify-center px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-[#a3e635]/40 bg-zinc-950 px-5 py-5 text-center shadow-[0_0_40px_rgba(163,230,53,0.2)]">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#a3e635] bg-[#a3e635]/15">
-          <Trophy className="h-7 w-7 text-[#a3e635]" />
+      <div className="w-full max-w-sm rounded-2xl border border-[#6B93B8]/40 bg-zinc-950 px-5 py-5 text-center shadow-[0_0_40px_rgba(107,147,184,0.2)]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#6B93B8] bg-[#6B93B8]/15">
+          <Trophy className="h-7 w-7 text-[#6B93B8]" />
         </div>
-        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#a3e635]">
+        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B93B8]">
           Coach Verified
         </p>
         <p className="mt-2 text-lg font-bold uppercase text-white">{exercise}</p>
-        <p className="mt-1 text-3xl font-black tabular-nums text-[#a3e635]">
+        <p className="mt-1 text-3xl font-black tabular-nums text-[#6B93B8]">
           {formatLiftAmount(exercise, weight)}
         </p>
         {verifiedDate && (
@@ -115,14 +117,17 @@ export function ProfileClient({
     created_at?: string;
     access_expires_at?: string | null;
     profile_photo_url?: string | null;
+    tdee?: number | null;
   };
   initialRecords: LiftRecord[];
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(user.name);
+  const [tdee, setTdee] = useState(user.tdee != null ? String(user.tdee) : "");
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(user.profile_photo_url ?? "");
   const [photoPreview, setPhotoPreview] = useState("");
   const [lifts, setLifts] = useState<Record<string, string>>({});
@@ -192,8 +197,11 @@ export function ProfileClient({
   }, [user.profile_photo_url]);
 
   useEffect(() => {
-    if (!editing) setName(user.name);
-  }, [user.name, editing]);
+    if (!editing) {
+      setName(user.name);
+      setTdee(user.tdee != null ? String(user.tdee) : "");
+    }
+  }, [user.name, user.tdee, editing]);
 
   const avatarSrc = photoPreview || profilePhotoUrl;
 
@@ -208,17 +216,19 @@ export function ProfileClient({
       const res = await api<{
         message: string;
         name?: string;
+        tdee?: number | null;
         profile_photo_url?: string | null;
       }>("update-profile", {
         method: "POST",
         body: JSON.stringify({
           name,
+          tdee: tdee.trim() ? Number(tdee) : null,
           ...(photoPreview ? { profile_photo_base64: photoPreview } : {}),
         }),
       });
       if (res.profile_photo_url) setProfilePhotoUrl(res.profile_photo_url);
       setPhotoPreview("");
-      setMessage("Profile saved");
+      setMessage(t("profile.profileSaved"));
       setEditing(false);
       router.refresh();
     } catch (err) {
@@ -236,6 +246,7 @@ export function ProfileClient({
   function cancelEditing() {
     setEditing(false);
     setName(user.name);
+    setTdee(user.tdee != null ? String(user.tdee) : "");
     setPhotoPreview("");
     setMessage("");
   }
@@ -243,7 +254,7 @@ export function ProfileClient({
   async function onPhotoSelect(file: File | null) {
     if (!file) return;
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const dataUrl = await readImageDataUrl(file);
       setPhotoPreview(dataUrl);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not read photo");
@@ -298,9 +309,9 @@ export function ProfileClient({
       )}
 
       <ClientPageHeader
-        eyebrow="Account"
-        title="My Profile"
-        subtitle="Manage your account details"
+        eyebrow={t("profile.eyebrow")}
+        title={t("profile.title")}
+        subtitle={t("profile.subtitle")}
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <AddFriendButton onClick={() => setAddFriendOpen(true)} />
@@ -311,7 +322,7 @@ export function ProfileClient({
                 disabled={saving}
                 className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium uppercase tracking-wide text-white/45 hover:border-white/25 hover:text-white disabled:opacity-50"
               >
-                Cancel
+                {t("profile.cancel")}
               </button>
             )}
             <button
@@ -321,7 +332,11 @@ export function ProfileClient({
               className="flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-xs font-medium uppercase tracking-wide text-white hover:border-white/40 disabled:opacity-50"
             >
               <Pencil className="h-3.5 w-3.5" />
-              {saving ? "Saving…" : editing ? "Save Profile" : "Edit Profile"}
+              {saving
+                ? t("common.saving")
+                : editing
+                  ? t("profile.saveProfile")
+                  : t("profile.editProfile")}
             </button>
           </div>
         }
@@ -364,7 +379,9 @@ export function ProfileClient({
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  className="hidden"
+                  className={MOBILE_FILE_INPUT_CLASS}
+                  aria-hidden
+                  tabIndex={-1}
                   onChange={(e) => onPhotoSelect(e.target.files?.[0] ?? null)}
                 />
                 <button
@@ -373,14 +390,14 @@ export function ProfileClient({
                   className="mt-3 flex w-24 items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2 py-2 text-[10px] font-medium uppercase tracking-wide text-white/60 hover:border-white/25 hover:text-white"
                 >
                   <Camera className="h-3.5 w-3.5" />
-                  Upload
+                  {t("profile.upload")}
                 </button>
               </>
             )}
           </div>
           <div className="flex-1 space-y-5">
             <div>
-              <FieldLabel>Full Name</FieldLabel>
+              <FieldLabel>{t("profile.fullName")}</FieldLabel>
               {editing ? (
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
               ) : (
@@ -388,15 +405,34 @@ export function ProfileClient({
               )}
             </div>
             <div>
-              <FieldLabel>Email Address</FieldLabel>
+              <FieldLabel>{t("profile.email")}</FieldLabel>
               <p className="text-lg text-white">{user.email}</p>
+            </div>
+            <div>
+              <FieldLabel>{t("profile.tdee")}</FieldLabel>
+              {editing ? (
+                <Input
+                  type="number"
+                  min={1}
+                  value={tdee}
+                  onChange={(e) => setTdee(e.target.value)}
+                  placeholder={t("profile.tdeePlaceholder")}
+                />
+              ) : (
+                <p className="text-lg text-white">
+                  {user.tdee != null
+                    ? `${user.tdee.toLocaleString()} ${t("common.kcal")}`
+                    : t("common.notSet")}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-white/40">{t("profile.tdeeHint")}</p>
             </div>
           </div>
         </div>
         {message && (
           <p
             className={`mt-4 text-sm ${
-              message === "Profile saved" ? "text-[#a3e635]" : "text-red-400"
+              message === t("profile.profileSaved") ? "text-[#6B93B8]" : "text-red-400"
             }`}
           >
             {message}
@@ -406,8 +442,8 @@ export function ProfileClient({
 
       <section className={cn(clientCard, "p-6")}>
         <h2 className={cn(clientSectionLabel, "flex items-center gap-2 normal-case tracking-[0.18em] text-white/55")}>
-          <Award className="h-4 w-4 text-[#a3e635]" />
-          My Top Lifts
+          <Award className="h-4 w-4 text-[#6B93B8]" />
+          {t("profile.myTopLifts")}
         </h2>
         <div className="mt-6 space-y-6">
           {LIFT_EXERCISES.map((exercise) => {
@@ -424,12 +460,12 @@ export function ProfileClient({
                 <p className="mb-2 text-sm font-bold uppercase text-white/80">{exercise}</p>
 
                 {verified && record && (
-                  <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#5BAD8F]/35 bg-[#5BAD8F]/10 px-4 py-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5BAD8F] text-black">
+                  <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#6B93B8]/35 bg-[#6B93B8]/10 px-4 py-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#6B93B8] text-white">
                       <Trophy className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold uppercase text-[#5BAD8F]">
+                      <p className="text-sm font-bold uppercase text-[#6B93B8]">
                         Coach Verified PR
                       </p>
                       <p className="text-lg font-black tabular-nums text-white">
@@ -481,7 +517,7 @@ export function ProfileClient({
                       <span
                         className={
                           verified
-                            ? "text-[#a3e635]"
+                            ? "text-[#6B93B8]"
                             : rejected
                               ? "text-red-400"
                               : "text-zinc-500"
@@ -522,7 +558,7 @@ export function ProfileClient({
 
       {socialLoading ? (
         <section className={cn(clientCard, "p-6 text-center text-sm text-white/45")}>
-          Loading friends & chat…
+          {t("profile.loadingSocial")}
         </section>
       ) : (
         <FriendsSection
@@ -538,11 +574,3 @@ export function ProfileClient({
   );
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Could not read image file"));
-    reader.readAsDataURL(file);
-  });
-}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { ClientPageHeader } from "@/components/ClientPageHeader";
+import { useLanguage } from "@/components/LanguageProvider";
 import { Button } from "@/components/ui/Button";
 import { clientField } from "@/lib/client-ui";
 import { localDateKey } from "@/lib/date-utils";
@@ -29,6 +30,7 @@ export function NutritionHeader({
   showAddButton?: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const today = localDateKey(new Date());
   const canGoForward = selectedDate < today;
 
@@ -41,8 +43,8 @@ export function NutritionHeader({
 
   return (
     <ClientPageHeader
-      eyebrow="Daily Tracking"
-      title="Nutrition Tracker"
+      eyebrow={t("nutrition.eyebrow")}
+      title={t("nutrition.title")}
       actions={
         <>
           <div className={`flex items-stretch overflow-hidden ${clientField}`}>
@@ -50,7 +52,7 @@ export function NutritionHeader({
               type="button"
               onClick={() => navigate(shiftDateKey(selectedDate, -1))}
               className="flex w-10 items-center justify-center text-white/45 transition-colors hover:bg-white/5 hover:text-white"
-              aria-label="Previous day"
+              aria-label={t("common.previousDay")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -65,7 +67,7 @@ export function NutritionHeader({
                   if (e.target.value) navigate(e.target.value);
                 }}
                 className="absolute inset-0 cursor-pointer opacity-0"
-                aria-label="Pick date"
+                aria-label={t("common.pickDate")}
               />
             </label>
             <button
@@ -73,7 +75,7 @@ export function NutritionHeader({
               onClick={() => navigate(shiftDateKey(selectedDate, 1))}
               disabled={!canGoForward}
               className="flex w-10 items-center justify-center text-white/45 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-              aria-label="Next day"
+              aria-label={t("common.nextDay")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -84,15 +86,15 @@ export function NutritionHeader({
               onClick={() => navigate(today)}
               className="rounded-xl border border-white/10 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-white/45 transition-colors hover:border-white/25 hover:text-white"
             >
-              Today
+              {t("common.today")}
             </button>
           )}
           {showAddButton && isToday && (
             <Link href="/nutrition/add" className="w-full sm:w-auto">
               <Button type="button" className="h-11 w-full gap-2 px-4 text-xs sm:w-auto sm:px-5">
                 <Plus className="h-4 w-4" />
-                <span className="sm:hidden">Add</span>
-                <span className="hidden sm:inline">Add Meal</span>
+                <span className="sm:hidden">{t("common.add")}</span>
+                <span className="hidden sm:inline">{t("nutrition.addMeal")}</span>
               </Button>
             </Link>
           )}

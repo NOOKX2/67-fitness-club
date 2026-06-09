@@ -1,8 +1,7 @@
 import { dateKeyFromIso, localDateKey, localDayRange } from "./date-utils";
 import { getDb } from "./db";
-import type { DailyMuscleStatus, MuscleTask } from "./muscle-streak-types";
-
-const TASKS: MuscleTask[] = ["workout", "weight", "meal"];
+import type { DailyMuscleStatus } from "./muscle-streak-types";
+import { MUSCLE_TASKS } from "./muscle-streak-types";
 
 function parseDateKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
@@ -36,7 +35,7 @@ async function getRecentDateSets(userId: string) {
   const db = await getDb();
   const lookbackStart = localDayRange(addDays(localDateKey(new Date()), -90)).start;
 
-  const [workoutLogs, cardioLogs, weightLogs, mealLogs] = await Promise.all([
+  const [workoutLogs, cardioLogs, mealLogs] = await Promise.all([
     db
       .collection("workout_logs")
       .find({ user_id: userId, timestamp: { $gte: lookbackStart } })
@@ -46,11 +45,6 @@ async function getRecentDateSets(userId: string) {
       .collection("cardio_logs")
       .find({ user_id: userId, timestamp: { $gte: lookbackStart } })
       .project({ timestamp: 1, _id: 0 })
-      .toArray(),
-    db
-      .collection("weight_tracking")
-      .find({ user_id: userId, date: { $gte: lookbackStart } })
-      .project({ date: 1, _id: 0 })
       .toArray(),
     db
       .collection("meal_submissions_v2")
@@ -63,39 +57,35 @@ async function getRecentDateSets(userId: string) {
     ...workoutLogs.map((log) => dateKeyFromIso(String(log.timestamp))),
     ...cardioLogs.map((log) => dateKeyFromIso(String(log.timestamp))),
   ]);
-  const weightDates = new Set(
-    weightLogs.map((log) => dateKeyFromIso(String(log.date)))
-  );
   const mealDates = new Set(
     mealLogs.map((log) => dateKeyFromIso(String(log.submitted_at)))
   );
 
-  return { workoutDates, weightDates, mealDates };
+  return { workoutDates, mealDates };
 }
 
 export async function getDailyMuscleStatus(userId: string): Promise<DailyMuscleStatus> {
   const today = localDateKey(new Date());
-  const { workoutDates, weightDates, mealDates } = await getRecentDateSets(userId);
+  const { workoutDates, mealDates } = await getRecentDateSets(userId);
 
-  const todayStatus: Record<MuscleTask, boolean> = {
+  const todayStatus = {
     workout: workoutDates.has(today),
-    weight: weightDates.has(today),
     meal: mealDates.has(today),
   };
 
   const fullDayKeys = new Set<string>();
   for (const key of workoutDates) {
-    if (weightDates.has(key) && mealDates.has(key)) {
+    if (mealDates.has(key)) {
       fullDayKeys.add(key);
     }
   }
 
-  const completed_count = TASKS.filter((task) => todayStatus[task]).length;
+  const completed_count = MUSCLE_TASKS.filter((task) => todayStatus[task]).length;
 
   return {
     today: todayStatus,
     completed_count,
-    all_complete: completed_count === TASKS.length,
+    all_complete: completed_count === MUSCLE_TASKS.length,
     streak_days: computeStreak(fullDayKeys),
   };
 }

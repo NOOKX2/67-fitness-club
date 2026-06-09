@@ -260,11 +260,11 @@ export function CustomPrograms({
               <p className="mt-4 text-sm text-red-400">{limitsError}</p>
             )}
             {limitsMessage && (
-              <p className="mt-4 text-sm text-[#a3e635]">{limitsMessage}</p>
+              <p className="mt-4 text-sm text-[#6B93B8]">{limitsMessage}</p>
             )}
             <Button
               type="button"
-              className="mt-5 h-11 w-full gap-2 bg-[#a3e635] text-black sm:w-auto"
+              className="mt-5 h-11 w-full gap-2 bg-[#6B93B8] text-white sm:w-auto"
               onClick={saveLimits}
               disabled={savingLimits}
             >
@@ -315,7 +315,7 @@ export function CustomPrograms({
             </h2>
             <Button
               type="button"
-              className="h-9 gap-1 bg-[#a3e635] text-xs text-black"
+              className="h-9 gap-1 bg-[#6B93B8] text-xs text-white"
               onClick={addExercise}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -384,7 +384,7 @@ export function CustomPrograms({
           )}
 
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-          {message && <p className="mt-4 text-sm text-[#a3e635]">{message}</p>}
+          {message && <p className="mt-4 text-sm text-[#6B93B8]">{message}</p>}
 
           <CardioEditor
             minutes={cardioMinutes}
@@ -401,7 +401,7 @@ export function CustomPrograms({
             cardioNotes.trim()) && (
             <Button
               type="button"
-              className="mt-6 h-11 w-full gap-2 bg-[#a3e635] text-black"
+              className="mt-6 h-11 w-full gap-2 bg-[#6B93B8] text-white"
               onClick={save}
               disabled={saving}
             >

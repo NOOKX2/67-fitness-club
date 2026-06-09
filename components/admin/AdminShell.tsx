@@ -67,7 +67,7 @@ function AdminSidebarNav({
               className={cn(
                 "flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-colors",
                 active
-                  ? "bg-[#a3e635] text-black"
+                  ? "bg-[#6B93B8] text-white"
                   : "text-zinc-400 hover:bg-zinc-900 hover:text-white"
               )}
             >
@@ -130,7 +130,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-[#0a0e14] text-white">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-zinc-800 bg-[#0a0e14] lg:flex">
         <div className="border-b border-zinc-800 px-5 py-6">
-          <p className="text-sm font-bold uppercase tracking-widest text-[#a3e635]">
+          <p className="text-sm font-bold uppercase tracking-widest text-[#6B93B8]">
             Admin Portal
           </p>
           <p className="mt-0.5 text-xs text-zinc-500">Admin</p>
@@ -156,7 +156,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-[#a3e635]">
+            <p className="text-sm font-bold uppercase tracking-widest text-[#6B93B8]">
               Admin Portal
             </p>
             <p className="mt-0.5 text-xs text-zinc-500">Admin</p>

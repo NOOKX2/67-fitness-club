@@ -7,9 +7,10 @@ import { json, error, parseBody, handleAuthError } from "../api-helpers";
 import {
   saveExerciseVideoToGridFS,
 } from "../exercise-video-storage";
-import { respondExerciseVideoStream } from "../video-stream-response";
+import { respondExerciseVideoStream, respondFormCheckVideoStream } from "../video-stream-response";
 import { normalizeDateOnly, validateAccessDates, type Gender } from "../access";
 import { serializeCoach, type CoachDoc } from "../coach-utils";
+import { sendFormCheckFeedbackToChat } from "../form-check-utils";
 import {
   deleteProfilePhotoFromGridFS,
   saveProfilePhotoToGridFS,
@@ -91,6 +92,7 @@ export async function handleAdmin(
           gender: c.gender ?? null,
           access_starts_at: c.access_starts_at ?? null,
           access_expires_at: c.access_expires_at ?? null,
+          tdee: c.tdee != null && c.tdee !== "" ? Number(c.tdee) : null,
         }))
       );
     }
@@ -102,6 +104,7 @@ export async function handleAdmin(
         access_expires_at?: string | null;
         tier_level?: string;
         name?: string;
+        tdee?: number | string | null;
       }>(req);
       const dateError = validateAccessDates(
         body.access_starts_at,
@@ -120,6 +123,17 @@ export async function handleAdmin(
       }
       if (body.access_expires_at !== undefined) {
         update.access_expires_at = body.access_expires_at || null;
+      }
+      if (body.tdee !== undefined) {
+        if (body.tdee === null || body.tdee === "") {
+          update.tdee = null;
+        } else {
+          const value = Number(body.tdee);
+          if (!Number.isFinite(value) || value <= 0) {
+            return error("TDEE must be a positive number", 400);
+          }
+          update.tdee = Math.round(value);
+        }
       }
 
       const result = await db.collection("users").updateOne(
@@ -151,6 +165,10 @@ export async function handleAdmin(
               assigned_meal_plan: updated.assigned_meal_plan
                 ? String(updated.assigned_meal_plan)
                 : undefined,
+              tdee:
+                updated.tdee != null && updated.tdee !== ""
+                  ? Number(updated.tdee)
+                  : null,
             }
           : null,
       });
@@ -165,6 +183,7 @@ export async function handleAdmin(
         gender?: Gender;
         access_starts_at?: string;
         access_expires_at?: string | null;
+        tdee?: number | string | null;
       }>(req);
       const dateError = validateAccessDates(
         body.access_starts_at,
@@ -177,6 +196,14 @@ export async function handleAdmin(
       if (existing) return error("Email already exists", 400);
 
       const today = new Date().toISOString().slice(0, 10);
+      let tdee: number | null = null;
+      if (body.tdee != null && body.tdee !== "") {
+        const value = Number(body.tdee);
+        if (!Number.isFinite(value) || value <= 0) {
+          return error("TDEE must be a positive number", 400);
+        }
+        tdee = Math.round(value);
+      }
       const result = await db.collection("users").insertOne({
         email,
         name: body.name,
@@ -186,6 +213,7 @@ export async function handleAdmin(
         gender: body.gender ?? null,
         access_starts_at: body.access_starts_at || today,
         access_expires_at: body.access_expires_at || null,
+        tdee,
         created_at: new Date().toISOString(),
       });
       return json({
@@ -197,6 +225,7 @@ export async function handleAdmin(
         gender: body.gender ?? null,
         access_starts_at: body.access_starts_at || today,
         access_expires_at: body.access_expires_at || null,
+        tdee,
         message: "Client created successfully",
       });
     }
@@ -313,11 +342,44 @@ export async function handleAdmin(
       return json(safe);
     }
 
+    if (
+      resource === "form-checks" &&
+      segments[2] &&
+      segments[3] === "stream" &&
+      req.method === "GET"
+    ) {
+      const submission = await db.collection("form_checks").findOne({ id: segments[2] });
+      if (!submission) return error("Form check not found", 404);
+
+      const fileId =
+        (submission.video_file_id as string | undefined) ?? String(submission.id);
+      const streamResponse = await respondFormCheckVideoStream(
+        req,
+        db,
+        fileId,
+        submission.video_base64
+      );
+      if (streamResponse) return streamResponse;
+      return error("Video file not found", 404);
+    }
+
     if (resource === "form-checks" && req.method === "GET" && segments.length === 2) {
+      const url = new URL(req.url);
+      const userId = url.searchParams.get("user_id");
+      const week = url.searchParams.get("week");
+      const day = url.searchParams.get("day");
+
+      const filter: Record<string, unknown> = {};
+      if (userId) filter.user_id = userId;
+      if (week) filter.week = Number(week);
+      if (day) filter.day = Number(day);
+      if (!userId && !week && !day) filter.status = "pending";
+
       const subs = await db
         .collection("form_checks")
-        .find({ status: "pending" })
-        .project({ _id: 0 })
+        .find(filter)
+        .project({ _id: 0, video_base64: 0 })
+        .sort({ submitted_at: -1 })
         .toArray();
       return json(subs);
     }
@@ -346,6 +408,23 @@ export async function handleAdmin(
         }
       );
       if (result.matchedCount === 0) return error("Submission not found", 404);
+
+      const feedbackText = String(body.feedback_text ?? feedback_text ?? "").trim();
+      if (feedbackText) {
+        await sendFormCheckFeedbackToChat(
+          db,
+          {
+            user_id: submission.user_id ? String(submission.user_id) : undefined,
+            exercise_name: submission.exercise_name
+              ? String(submission.exercise_name)
+              : undefined,
+            week: submission.week != null ? Number(submission.week) : undefined,
+            day: submission.day != null ? Number(submission.day) : undefined,
+          },
+          feedbackText
+        );
+      }
+
       await db.collection("notifications").insertOne({
         id: uuidv4(),
         user_id: submission.user_id,

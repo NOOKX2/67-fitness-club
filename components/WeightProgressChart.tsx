@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WeightEntry } from "@/lib/data";
+import { BRAND_BLUE, BRAND_BLUE_LIGHT } from "@/lib/brand";
 
 const CHART_WIDTH = 640;
 const CHART_HEIGHT = 280;
@@ -215,8 +216,8 @@ export function WeightProgressChart({ history }: { history: WeightEntry[] }) {
         >
           <defs>
             <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fb923c" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#fb923c" stopOpacity="0" />
+              <stop offset="0%" stopColor={BRAND_BLUE} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={BRAND_BLUE} stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -258,7 +259,7 @@ export function WeightProgressChart({ history }: { history: WeightEntry[] }) {
             <path
               d={chart.linePath}
               fill="none"
-              stroke="#fb923c"
+              stroke={BRAND_BLUE}
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -274,7 +275,7 @@ export function WeightProgressChart({ history }: { history: WeightEntry[] }) {
                     cx={point.x}
                     cy={point.y}
                     r={12}
-                    fill="#fb923c"
+                    fill={BRAND_BLUE}
                     opacity={0.25}
                     className="animate-ping"
                   />
@@ -283,7 +284,7 @@ export function WeightProgressChart({ history }: { history: WeightEntry[] }) {
                   cx={point.x}
                   cy={point.y}
                   r={isLatest ? 6 : 5}
-                  fill="#fb923c"
+                  fill={BRAND_BLUE}
                   stroke="#18181b"
                   strokeWidth={2}
                   style={{ transition: "cx 0.05s linear, cy 0.05s linear, r 0.3s ease" }}
@@ -314,7 +315,7 @@ export function WeightProgressChart({ history }: { history: WeightEntry[] }) {
         </svg>
 
         <div className="mt-2 flex items-center justify-center gap-2 text-xs text-zinc-400">
-          <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-[#fb923c]">
+          <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-[#6B93B8]">
             <span className="h-1 w-1 rounded-full bg-white" />
           </span>
           Weight (kg)

@@ -8,6 +8,11 @@ export type AppNotification = {
   user_id?: string;
   client_id?: string;
   client_name?: string;
+  category?: string;
+  link?: string;
+  week?: number;
+  day?: number;
+  date?: string;
 };
 
 export type NotificationFeed = {

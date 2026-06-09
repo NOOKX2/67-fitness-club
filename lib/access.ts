@@ -116,7 +116,7 @@ export function expiryCountdownLabel(client: {
   if (days <= 7) {
     return { text: `${days} days left`, className: "text-amber-400" };
   }
-  return { text: `${days} days left`, className: "text-[#a3e635]" };
+  return { text: `${days} days left`, className: "text-[#6B93B8]" };
 }
 
 export function validateAccessDates(

@@ -45,6 +45,7 @@ export function CreateClientModal({
     gender: "prefer_not_to_say" as Gender,
     access_starts_at: todayDateInput(),
     access_expires_at: "",
+    tdee: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,6 +60,7 @@ export function CreateClientModal({
         body: JSON.stringify({
           ...form,
           access_expires_at: form.access_expires_at || null,
+          tdee: form.tdee ? Number(form.tdee) : null,
         }),
       });
       onCreated?.({
@@ -70,6 +72,7 @@ export function CreateClientModal({
         access_starts_at: res.access_starts_at ?? form.access_starts_at,
         access_expires_at:
           res.access_expires_at ?? (form.access_expires_at || null),
+        tdee: res.tdee ?? (form.tdee ? Number(form.tdee) : null),
         created_at: new Date().toISOString(),
       });
       router.refresh();
@@ -163,6 +166,17 @@ export function CreateClientModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <FieldLabel>TDEE (kcal / day)</FieldLabel>
+            <Input
+              type="number"
+              min={1}
+              value={form.tdee}
+              onChange={(e) => setForm({ ...form, tdee: e.target.value })}
+              placeholder="e.g. 2200"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

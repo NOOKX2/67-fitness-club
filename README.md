@@ -1,4 +1,4 @@
-# FitPro — Full-stack Next.js
+# 21 Training Club — Full-stack Next.js
 
 Fitness coaching app migrated to **Next.js 16**, **Tailwind CSS**, and **Bun** as a single full-stack project (no separate Python backend or CRA frontend).
 

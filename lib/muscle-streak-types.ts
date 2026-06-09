@@ -1,4 +1,6 @@
-export type MuscleTask = "workout" | "weight" | "meal";
+export type MuscleTask = "workout" | "meal";
+
+export const MUSCLE_TASKS: MuscleTask[] = ["workout", "meal"];
 
 export type DailyMuscleStatus = {
   today: Record<MuscleTask, boolean>;
@@ -7,14 +9,11 @@ export type DailyMuscleStatus = {
   streak_days: number;
 };
 
-const TASKS: MuscleTask[] = ["workout", "weight", "meal"];
-
 export const MUSCLE_TASK_META: Record<
   MuscleTask,
   { label: string; shortLabel: string }
 > = {
   workout: { label: "Workout", shortLabel: "Lift" },
-  weight: { label: "Weight", shortLabel: "Scale" },
   meal: { label: "Meal", shortLabel: "Fuel" },
 };
 
@@ -25,8 +24,8 @@ export function patchDailyMuscleStatus(
   if (status.today[task]) return status;
 
   const today = { ...status.today, [task]: true };
-  const completed_count = TASKS.filter((key) => today[key]).length;
-  const all_complete = completed_count === TASKS.length;
+  const completed_count = MUSCLE_TASKS.filter((key) => today[key]).length;
+  const all_complete = completed_count === MUSCLE_TASKS.length;
   const streak_days =
     all_complete && status.streak_days === 0 ? 1 : status.streak_days;
 

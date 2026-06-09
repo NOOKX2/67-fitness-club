@@ -12,6 +12,7 @@ import { Flame } from "lucide-react";
 import { MuscleStreakBadges } from "@/components/MuscleStreakBadges";
 import {
   MUSCLE_TASK_META,
+  MUSCLE_TASKS,
   patchDailyMuscleStatus,
   type DailyMuscleStatus,
   type MuscleTask,
@@ -39,18 +40,18 @@ function BowRibbon({ className }: { className?: string }) {
     >
       <path
         d="M8 18 C8 8 28 4 38 16 L60 28 L82 16 C92 4 112 8 112 18 C112 28 96 34 82 30 L60 42 L38 30 C24 34 8 28 8 18 Z"
-        fill="#a3e635"
+        fill="#6B93B8"
       />
-      <circle cx="60" cy="28" r="8" fill="#d9f99d" stroke="#84cc16" strokeWidth="2" />
+      <circle cx="60" cy="28" r="8" fill="#A8C5DC" stroke="#5a82a7" strokeWidth="2" />
       <path
         d="M52 36 L48 68 L56 40 L60 68 L64 40 L72 68 L68 36"
-        fill="#84cc16"
+        fill="#5a82a7"
         opacity="0.9"
       />
       <path
         d="M20 22 C14 30 10 42 12 54 M100 22 C106 30 110 42 108 54"
         fill="none"
-        stroke="#a3e635"
+        stroke="#6B93B8"
         strokeWidth="3"
         strokeLinecap="round"
         opacity="0.55"
@@ -69,7 +70,7 @@ function MuscleRewardBow({
   const [visible, setVisible] = useState(false);
   const meta = MUSCLE_TASK_META[reward.task];
   const { status } = reward;
-  const remaining = 3 - status.completed_count;
+  const remaining = MUSCLE_TASKS.length - status.completed_count;
 
   useEffect(() => {
     const enter = window.requestAnimationFrame(() => setVisible(true));
@@ -93,7 +94,7 @@ function MuscleRewardBow({
         className={cn(
           "w-full max-w-sm rounded-2xl border px-5 pb-5 pt-3 text-center shadow-2xl transition-transform duration-500",
           status.all_complete
-            ? "border-[#a3e635]/50 bg-gradient-to-b from-zinc-900 to-black shadow-[0_0_40px_rgba(163,230,53,0.25)]"
+            ? "border-[#6B93B8]/50 bg-gradient-to-b from-zinc-900 to-black shadow-[0_0_40px_rgba(107,147,184,0.25)]"
             : "border-zinc-700 bg-zinc-950",
           visible ? "scale-100" : "scale-95"
         )}
@@ -101,7 +102,7 @@ function MuscleRewardBow({
         <div className="flex justify-center">
           <BowRibbon />
         </div>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.25em] text-[#a3e635]">
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.25em] text-[#6B93B8]">
           Muscle Reward
         </p>
         <p className="mt-2 text-lg font-bold uppercase text-white">
@@ -112,14 +113,14 @@ function MuscleRewardBow({
         <div className="mt-4 flex items-center justify-center gap-3">
           <span className="text-4xl font-black tabular-nums text-white">
             {status.completed_count}
-            <span className="text-2xl text-zinc-500">/3</span>
+            <span className="text-2xl text-zinc-500">/{MUSCLE_TASKS.length}</span>
           </span>
           <div className="text-left">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Today&apos;s Progress
             </p>
             {status.all_complete ? (
-              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-orange-300">
+              <p className="mt-0.5 flex items-center gap-1 text-sm font-bold text-[#A8C5DC]">
                 <Flame className="h-4 w-4" />
                 Full day · {status.streak_days} day streak
               </p>

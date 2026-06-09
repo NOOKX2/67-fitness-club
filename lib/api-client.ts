@@ -28,6 +28,7 @@ export type User = {
   role: string;
   tier_level: string;
   created_at?: string;
+  access_starts_at?: string | null;
   access_expires_at?: string | null;
   profile_photo_url?: string | null;
 };

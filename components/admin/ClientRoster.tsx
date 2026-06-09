@@ -53,7 +53,7 @@ export function ClientRoster({ clients }: { clients: AdminClient[] }) {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
-            className="h-10 gap-2 bg-[#a3e635] text-black hover:bg-[#bef264]"
+            className="h-10 gap-2 bg-[#6B93B8] text-white hover:bg-[#5a82a7]"
             onClick={() => setShowModal(true)}
           >
             <Plus className="h-4 w-4" />

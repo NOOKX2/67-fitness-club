@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "../db";
 import { json, error, parseBody } from "../api-helpers";
 import { ensureCoaches, serializeCoach } from "../coach-utils";
+import { createAdminNotification } from "../admin-notifications";
 
 export async function handleMessages(
   req: NextRequest,
@@ -44,17 +45,13 @@ export async function handleMessages(
       const client = await db
         .collection("users")
         .findOne({ _id: new ObjectId(body.user_id) });
-      await db.collection("notifications").insertOne({
-        id: uuidv4(),
-        audience: "admin",
-        client_id: body.user_id,
-        client_name: client?.name ? String(client.name) : "Client",
+      const clientName = client?.name ? String(client.name) : "Client";
+      await createAdminNotification(db, {
         type: "client_message",
-        title: "New client message",
+        clientId: body.user_id,
+        clientName,
         message:
           body.content.slice(0, 100) + (body.content.length > 100 ? "..." : ""),
-        read: false,
-        created_at: new Date().toISOString(),
       });
     }
     return json(msg);

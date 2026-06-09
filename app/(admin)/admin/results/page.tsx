@@ -1,5 +1,5 @@
 import { ClientResults } from "@/components/admin/ClientResults";
-import { getAdminClients, getClientWorkoutLogs } from "@/lib/data";
+import { getAdminClients, getClientFormChecks, getClientWorkoutLogs } from "@/lib/data";
 
 export default async function AdminResultsPage({
   searchParams,
@@ -17,6 +17,9 @@ export default async function AdminResultsPage({
   const logs = selectedClientId
     ? await getClientWorkoutLogs(selectedClientId, week, day)
     : [];
+  const formChecks = selectedClientId
+    ? await getClientFormChecks(selectedClientId, week, day)
+    : [];
   return (
     <ClientResults
       clients={clients}
@@ -24,6 +27,7 @@ export default async function AdminResultsPage({
       week={week}
       day={day}
       logs={logs}
+      formChecks={formChecks}
     />
   );
 }

@@ -140,7 +140,7 @@ export function ProgramBuilder({
           </h2>
           <Button
             type="button"
-            className="h-9 gap-1 bg-[#a3e635] text-xs text-black hover:bg-[#bef264]"
+            className="h-9 gap-1 bg-[#6B93B8] text-xs text-white hover:bg-[#5a82a7]"
             onClick={addExercise}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -215,7 +215,7 @@ export function ProgramBuilder({
         </div>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-        {message && <p className="mt-4 text-sm text-[#a3e635]">{message}</p>}
+        {message && <p className="mt-4 text-sm text-[#6B93B8]">{message}</p>}
 
         <CardioEditor
           minutes={cardioMinutes}
@@ -228,7 +228,7 @@ export function ProgramBuilder({
 
         <Button
           type="button"
-          className="mt-6 h-12 w-full gap-2 bg-[#a3e635] text-black hover:bg-[#bef264]"
+          className="mt-6 h-12 w-full gap-2 bg-[#6B93B8] text-white hover:bg-[#5a82a7]"
           onClick={save}
           disabled={saving}
         >

@@ -93,7 +93,7 @@ export function coachRatingStyle(rating: number): {
 } {
   const rounded = Math.min(5, Math.max(1, Math.round(rating)));
   const label = RATING_LABELS[rounded] ?? String(rating);
-  if (rating >= 4) return { label, className: "text-[#a3e635]" };
+  if (rating >= 4) return { label, className: "text-[#6B93B8]" };
   if (rating >= 3) return { label, className: "text-amber-400" };
   return { label, className: "text-red-400" };
 }

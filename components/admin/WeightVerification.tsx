@@ -42,7 +42,7 @@ export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold uppercase tracking-wide text-white">
-          <Trophy className="h-6 w-6 text-[#a3e635]" />
+          <Trophy className="h-6 w-6 text-[#6B93B8]" />
           Weight Verification Queue
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -73,7 +73,7 @@ export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
                   <p className="text-sm text-zinc-500">{lift.user_email}</p>
                   <p className="mt-2 text-sm text-white">
                     {lift.exercise_name} —{" "}
-                    <span className="text-[#a3e635]">
+                    <span className="text-[#6B93B8]">
                       {formatLiftAmount(lift.exercise_name, lift.weight_lifted)}
                     </span>
                   </p>
@@ -83,7 +83,7 @@ export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
                     <p
                       className={`text-xs ${
                         messages[lift.id].includes("saved")
-                          ? "text-[#a3e635]"
+                          ? "text-[#6B93B8]"
                           : "text-red-400"
                       }`}
                     >
@@ -93,7 +93,7 @@ export function WeightVerification({ lifts }: { lifts: PendingLift[] }) {
                   <div className="flex gap-2">
                   <Button
                     type="button"
-                    className="h-9 gap-1 bg-[#a3e635] text-xs text-black"
+                    className="h-9 gap-1 bg-[#6B93B8] text-xs text-white"
                     onClick={() => verify(lift.id)}
                   >
                     <Check className="h-3.5 w-3.5" />

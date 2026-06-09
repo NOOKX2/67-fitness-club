@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Scale, TrendingUp } from "lucide-react";
 import { ClientPageHeader } from "@/components/ClientPageHeader";
+import { useLanguage } from "@/components/LanguageProvider";
 import { StepperInput } from "@/components/StepperInput";
 import { WeightProgressChart } from "@/components/WeightProgressChart";
-import { useMuscleReward } from "@/components/MuscleStreakContext";
 import { Button } from "@/components/ui/Button";
 import { Input, FieldLabel } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
 import { clientCard, clientCardInner, clientSaveButtonClass, clientSectionLabel, clientField } from "@/lib/client-ui";
-import type { ProgressPhoto, WeightEntry } from "@/lib/data";
+import type { ProgressJourneyStats, ProgressPhoto, WeightEntry } from "@/lib/data";
+import { MOBILE_FILE_INPUT_CLASS, readImageDataUrl } from "@/lib/file-upload";
 import { cn } from "@/lib/utils";
 
 function formatPhotoDate(date?: string) {
@@ -37,6 +38,7 @@ function ComparePhotoColumn({
   onSelect: (id: string) => void;
   label: string;
 }) {
+  const { t } = useLanguage();
   const photo = photos.find((p) => p.id === selectedId);
   if (!photo) return null;
 
@@ -70,13 +72,15 @@ function ComparePhotoColumn({
         />
       ) : (
         <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-zinc-900 text-[10px] text-zinc-600 sm:rounded-xl sm:text-sm">
-          No photo
+          {t("progress.noPhoto")}
         </div>
       )}
       <div className="text-[11px] sm:text-sm">
         <p className="text-white">{formatPhotoDate(photo.date)}</p>
         <p className="mt-0.5 text-zinc-400 sm:mt-1">
-          {photo.weight != null ? `${photo.weight} kg` : "Weight not recorded"}
+          {photo.weight != null
+            ? `${photo.weight} ${t("common.kg")}`
+            : t("progress.weightNotRecorded")}
         </p>
         {photo.notes ? (
           <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-500 sm:mt-1 sm:text-xs">
@@ -84,6 +88,30 @@ function ComparePhotoColumn({
           </p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function JourneyStatCard({
+  label,
+  value,
+  hint,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className={cn(clientCardInner, "px-4 py-4")}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+        {label}
+      </p>
+      <p className={cn("mt-1 text-xl font-bold sm:text-2xl", valueClassName ?? "text-white")}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] leading-snug text-white/35">{hint}</p>
     </div>
   );
 }
@@ -100,7 +128,7 @@ export function ProgressClient({
   initialHeight: number | null;
 }) {
   const router = useRouter();
-  const { celebrateMuscleTask } = useMuscleReward();
+  const { t } = useLanguage();
   const last = initialHistory[initialHistory.length - 1];
   const [weight, setWeight] = useState(last ? String(last.weight) : "85");
   const [height, setHeight] = useState(
@@ -124,6 +152,8 @@ export function ProgressClient({
   const [photos, setPhotos] = useState(initialPhotos);
   const [beforePhotoId, setBeforePhotoId] = useState("");
   const [afterPhotoId, setAfterPhotoId] = useState("");
+  const [journeyStats, setJourneyStats] = useState<ProgressJourneyStats | null>(null);
+  const [journeyLoading, setJourneyLoading] = useState(false);
 
   useEffect(() => {
     setHistory(initialHistory);
@@ -147,6 +177,37 @@ export function ProgressClient({
     );
   }, [photos]);
 
+  useEffect(() => {
+    const before = photos.find((photo) => photo.id === beforePhotoId);
+    const after = photos.find((photo) => photo.id === afterPhotoId);
+    if (!before?.date || !after?.date) {
+      setJourneyStats(null);
+      return;
+    }
+
+    const start = before.date.slice(0, 10);
+    const end = after.date.slice(0, 10);
+    let cancelled = false;
+    setJourneyLoading(true);
+
+    void api<ProgressJourneyStats>(
+      `progress/journey?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+    )
+      .then((stats) => {
+        if (!cancelled) setJourneyStats(stats);
+      })
+      .catch(() => {
+        if (!cancelled) setJourneyStats(null);
+      })
+      .finally(() => {
+        if (!cancelled) setJourneyLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [beforePhotoId, afterPhotoId, photos]);
+
   async function logWeight() {
     setMessage("");
     setError("");
@@ -166,11 +227,10 @@ export function ProgressClient({
           date: entry.date ?? new Date().toISOString(),
         },
       ]);
-      setMessage("Weight saved");
-      celebrateMuscleTask("weight");
+      setMessage(t("progress.weightSaved"));
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : t("common.saveFailed"));
     }
   }
 
@@ -180,11 +240,11 @@ export function ProgressClient({
     setPhotoMessage("");
     setPhotoError("");
     try {
-      const dataUrl = await readPhotoDataUrl(f);
+      const dataUrl = await readImageDataUrl(f);
       setPhotoPreview(dataUrl);
       await submitPhoto(dataUrl);
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Upload failed");
+      setPhotoError(err instanceof Error ? err.message : t("common.uploadFailed"));
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -213,7 +273,7 @@ export function ProgressClient({
     ]);
     setAfterPhotoId(doc.id);
     if (photos.length === 0) setBeforePhotoId(doc.id);
-    setPhotoMessage("Photo saved");
+    setPhotoMessage(t("progress.photoSaved"));
     setPhotoPreview("");
     setNotes("");
     router.refresh();
@@ -246,12 +306,10 @@ export function ProgressClient({
     avgPerTime = totalDelta / (history.length - 1);
   }
 
-  const changeColor =
-    changeKg < 0
-      ? "text-[#a3e635]"
-      : changeKg > 0
-        ? "text-amber-400"
-        : "text-white";
+  function signedChangeColor(value: number | null | undefined) {
+    if (value == null || value === 0) return "text-[#A8C5DC]";
+    return value < 0 ? "text-red-400" : "text-emerald-400";
+  }
 
   function formatSigned(value: number, suffix: string) {
     const sign = value > 0 ? "+" : "";
@@ -260,20 +318,20 @@ export function ProgressClient({
 
   return (
     <div className="space-y-8">
-      <ClientPageHeader eyebrow="Body Stats" title="Progress Tracker" />
+      <ClientPageHeader eyebrow={t("progress.eyebrow")} title={t("progress.title")} />
 
-      {message && <p className="text-sm text-[#a3e635]">{message}</p>}
+      {message && <p className="text-sm text-[#6B93B8]">{message}</p>}
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       <section className={cn(clientCard, "p-6")}>
-        <p className={clientSectionLabel}>Weight Tracker</p>
+        <p className={clientSectionLabel}>{t("progress.weightTracker")}</p>
         <div className="mt-5 grid grid-cols-2 gap-4">
           <div>
-            <FieldLabel>Current Weight (kg)</FieldLabel>
+            <FieldLabel>{t("progress.currentWeight")}</FieldLabel>
             <StepperInput value={weight} onChange={setWeight} step={0.5} />
           </div>
           <div>
-            <FieldLabel>Height (cm)</FieldLabel>
+            <FieldLabel>{t("progress.heightCm")}</FieldLabel>
             <StepperInput
               value={height}
               onChange={setHeight}
@@ -288,29 +346,39 @@ export function ProgressClient({
           className={cn("mt-5", clientSaveButtonClass)}
           onClick={logWeight}
         >
-          Log Weight
+          {t("progress.logWeight")}
         </Button>
 
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className={cn(clientCardInner, "px-4 py-3 text-center")}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-              Total Change
+              {t("progress.totalChange")}
             </p>
-            <p className={`mt-1 text-2xl font-bold ${changeColor}`}>
+            <p
+              className={cn(
+                "mt-1 text-2xl font-bold",
+                hasWeightHistory ? signedChangeColor(changePercent) : "text-white"
+              )}
+            >
               {hasWeightHistory ? formatSigned(changePercent, "%") : "—"}
             </p>
           </div>
           <div className={cn(clientCardInner, "px-4 py-3 text-center")}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-              Change (kg)
+              {t("progress.changeKg")}
             </p>
-            <p className={`mt-1 text-2xl font-bold ${changeColor}`}>
+            <p
+              className={cn(
+                "mt-1 text-2xl font-bold",
+                hasWeightHistory ? signedChangeColor(changeKg) : "text-white"
+              )}
+            >
               {hasWeightHistory ? formatSigned(changeKg, " kg") : "—"}
             </p>
           </div>
           <div className={cn(clientCardInner, "px-4 py-3 text-center")}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-              Current BMI
+              {t("progress.currentBmi")}
             </p>
             <p className="mt-1 text-2xl font-bold text-white">
               {bmi != null ? bmi.toFixed(1) : "—"}
@@ -318,18 +386,13 @@ export function ProgressClient({
           </div>
           <div className={cn(clientCardInner, "px-4 py-3 text-center")}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
-              Vol. Time
+              {t("progress.volTime")}
             </p>
             <p
-              className={`mt-1 text-2xl font-bold ${
-                avgPerTime == null
-                  ? "text-white"
-                  : avgPerTime < 0
-                    ? "text-[#a3e635]"
-                    : avgPerTime > 0
-                      ? "text-amber-400"
-                      : "text-white"
-              }`}
+              className={cn(
+                "mt-1 text-2xl font-bold",
+                avgPerTime == null ? "text-white" : signedChangeColor(avgPerTime)
+              )}
             >
               {avgPerTime != null ? (
                 <>
@@ -346,29 +409,29 @@ export function ProgressClient({
         {!hasWeightHistory ? (
           <div className="mt-10 flex flex-col items-center py-12 text-white/45">
             <Scale className="mb-4 h-12 w-12 stroke-1" />
-            <p className="text-sm">Start tracking your weight to see progress</p>
+            <p className="text-sm">{t("progress.startWeightTracking")}</p>
           </div>
         ) : (
           <div className="mt-8">
-            <p className={clientSectionLabel}>Weight Progress</p>
+            <p className={clientSectionLabel}>{t("progress.weightProgress")}</p>
             <WeightProgressChart history={history} />
           </div>
         )}
       </section>
 
       <section className={cn(clientCard, "p-6")}>
-        <p className={clientSectionLabel}>Upload Progress Photo</p>
+        <p className={clientSectionLabel}>{t("progress.uploadPhoto")}</p>
         <div className="mt-5 grid grid-cols-2 gap-4">
           <div>
-            <FieldLabel>Current Weight (kg)</FieldLabel>
+            <FieldLabel>{t("progress.currentWeightShort")}</FieldLabel>
             <StepperInput value={photoWeight} onChange={setPhotoWeight} step={0.5} />
           </div>
           <div>
-            <FieldLabel>Notes</FieldLabel>
+            <FieldLabel>{t("progress.notes")}</FieldLabel>
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Feeling strong today!"
+              placeholder={t("progress.notesPlaceholder")}
             />
           </div>
         </div>
@@ -376,7 +439,9 @@ export function ProgressClient({
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          className="hidden"
+          className={MOBILE_FILE_INPUT_CLASS}
+          aria-hidden
+          tabIndex={-1}
           onChange={(e) => onPhotoSelect(e.target.files?.[0] ?? null)}
         />
         {photoPreview ? (
@@ -389,7 +454,7 @@ export function ProgressClient({
         ) : null}
         {photoError && <p className="mt-4 text-sm text-red-400">{photoError}</p>}
         {photoMessage && (
-          <p className="mt-4 text-sm text-[#a3e635]">{photoMessage}</p>
+          <p className="mt-4 text-sm text-[#6B93B8]">{photoMessage}</p>
         )}
         <Button
           type="button"
@@ -399,18 +464,18 @@ export function ProgressClient({
           disabled={uploadingPhoto}
         >
           <Camera className="h-4 w-4" />
-          {uploadingPhoto ? "Uploading…" : "Take / Upload Photo"}
+          {uploadingPhoto ? t("progress.uploading") : t("progress.takeUploadPhoto")}
         </Button>
       </section>
 
       <section className={cn(clientCard, "p-6")}>
-        <p className={clientSectionLabel}>Before &amp; After</p>
+        <p className={clientSectionLabel}>{t("progress.beforeAfter")}</p>
         {!hasPhotos ? (
           <div className="mt-6 flex flex-col items-center py-12 text-center">
             <TrendingUp className="mb-4 h-12 w-12 text-white/25" />
-            <p className="font-medium text-white">Start tracking your transformation</p>
+            <p className="font-medium text-white">{t("progress.startTracking")}</p>
             <p className="mt-2 max-w-sm text-sm text-white/45">
-              Upload a progress photo to see your first and latest comparison
+              {t("progress.startTrackingHint")}
             </p>
           </div>
         ) : (
@@ -419,62 +484,82 @@ export function ProgressClient({
               photos={photos}
               selectedId={beforePhotoId}
               onSelect={setBeforePhotoId}
-              label="Before"
+              label={t("progress.before")}
             />
             <ComparePhotoColumn
               photos={photos}
               selectedId={afterPhotoId}
               onSelect={setAfterPhotoId}
-              label="After"
+              label={t("progress.after")}
             />
           </div>
         )}
+
+        {hasPhotos ? (
+          <div className="mt-6 border-t border-white/10 pt-6">
+            <p className={clientSectionLabel}>{t("progress.howYouGotThere")}</p>
+            <p className="mt-1 text-xs text-white/40">{t("progress.journeyHint")}</p>
+
+            {journeyLoading ? (
+              <p className="mt-5 text-sm text-white/45">{t("progress.calculating")}</p>
+            ) : journeyStats ? (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <JourneyStatCard
+                  label={t("progress.days")}
+                  value={String(journeyStats.daysSpent)}
+                  hint={t("progress.daysHint")}
+                />
+                <JourneyStatCard
+                  label={t("progress.trainingDays")}
+                  value={String(journeyStats.activeTrainingDays)}
+                  hint={t("progress.trainingDaysHint")}
+                />
+                <JourneyStatCard
+                  label={t("progress.totalReps")}
+                  value={journeyStats.totalReps.toLocaleString()}
+                  hint={t("progress.totalRepsHint")}
+                />
+                <JourneyStatCard
+                  label={t("progress.caloriesVsTdee")}
+                  value={
+                    journeyStats.calorieBalance != null
+                      ? journeyStats.calorieBalance < 0
+                        ? t("progress.deficit", {
+                            amount: Math.abs(Math.round(journeyStats.calorieBalance)).toLocaleString(),
+                          })
+                        : journeyStats.calorieBalance > 0
+                          ? t("progress.surplus", {
+                              amount: Math.round(journeyStats.calorieBalance).toLocaleString(),
+                            })
+                          : t("progress.onTarget")
+                      : t("progress.setTdee")
+                  }
+                  valueClassName={
+                    journeyStats.calorieBalance == null
+                      ? undefined
+                      : journeyStats.calorieBalance < 0
+                        ? "text-red-400"
+                        : journeyStats.calorieBalance > 0
+                          ? "text-emerald-400"
+                          : "text-[#A8C5DC]"
+                  }
+                  hint={
+                    journeyStats.tdee
+                      ? t("progress.tdeeHint", {
+                          eaten: journeyStats.totalCaloriesConsumed.toLocaleString(),
+                          tdee: journeyStats.tdee.toLocaleString(),
+                        })
+                      : t("progress.tdeeMissing")
+                  }
+                />
+              </div>
+            ) : (
+              <p className="mt-5 text-sm text-white/45">{t("progress.selectPhotos")}</p>
+            )}
+          </div>
+        ) : null}
       </section>
     </div>
   );
 }
 
-function readPhotoDataUrl(file: File): Promise<string> {
-  return compressProgressPhoto(file).catch(() => readFileAsDataUrl(file));
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Could not read image file"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function compressProgressPhoto(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const maxSize = 960;
-      let { width, height } = img;
-      if (width > maxSize || height > maxSize) {
-        const scale = maxSize / Math.max(width, height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Could not process image"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not read image"));
-    };
-    img.src = url;
-  });
-}

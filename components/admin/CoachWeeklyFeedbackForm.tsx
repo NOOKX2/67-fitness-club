@@ -66,7 +66,7 @@ export function CoachWeeklyFeedbackForm({ clientId }: { clientId: string }) {
       onSubmit={save}
       className="border-b border-zinc-800 bg-zinc-950/80 px-5 py-4"
     >
-      <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#a3e635]">
+      <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#6B93B8]">
         Weekly Feedback
       </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -94,7 +94,7 @@ export function CoachWeeklyFeedbackForm({ clientId }: { clientId: string }) {
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Write weekly feedback for this client..."
-            className="w-full resize-none rounded-xl border border-zinc-700 bg-black px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-[#a3e635] focus:outline-none"
+            className="w-full resize-none rounded-xl border border-zinc-700 bg-black px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-[#6B93B8] focus:outline-none"
           />
         </div>
         <Button type="submit" disabled={saving || loading || !feedback.trim()}>
@@ -103,7 +103,7 @@ export function CoachWeeklyFeedbackForm({ clientId }: { clientId: string }) {
       </div>
       {loading && <p className="mt-2 text-xs text-zinc-500">Loading reports…</p>}
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
-      {message && <p className="mt-2 text-xs text-[#a3e635]">{message}</p>}
+      {message && <p className="mt-2 text-xs text-[#6B93B8]">{message}</p>}
     </form>
   );
 }

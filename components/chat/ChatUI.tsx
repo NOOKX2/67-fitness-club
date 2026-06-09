@@ -2,6 +2,7 @@
 
 import { Paperclip, Send } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { MOBILE_FILE_INPUT_CLASS } from "@/lib/file-upload";
 import { User } from "lucide-react";
 import type { Message } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -222,6 +223,7 @@ export function ChatComposer({
   canSend?: boolean;
   variant?: "default" | "coach";
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const ready = canSend ?? Boolean(content.trim());
   const isCoach = variant === "coach";
 
@@ -238,22 +240,31 @@ export function ChatComposer({
           isCoach ? "bg-black/50" : "bg-black/45"
         )}
       >
-        <label
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className={MOBILE_FILE_INPUT_CLASS}
+          aria-hidden
+          tabIndex={-1}
+          onChange={(e) => {
+            onAttach(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          aria-label="Attach image"
+          onClick={() => fileInputRef.current?.click()}
           className={cn(
-            "flex shrink-0 cursor-pointer items-center justify-center text-white/45 transition-colors hover:text-white",
+            "flex shrink-0 items-center justify-center text-white/45 transition-colors hover:text-white",
             isCoach
               ? "mb-0.5 h-9 w-9 rounded-full border border-white/10 bg-white/[0.06] hover:bg-white/10 sm:mb-0 sm:h-10 sm:w-10"
               : "h-10 w-10 rounded-xl hover:bg-white/5"
           )}
         >
           <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onAttach(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        </button>
         <textarea
           rows={1}
           placeholder={placeholder}

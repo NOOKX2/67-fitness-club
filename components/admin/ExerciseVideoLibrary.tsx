@@ -8,7 +8,9 @@ import { Input, FieldLabel } from "@/components/ui/Input";
 import { ExerciseVideoPlayer } from "@/components/ExerciseVideoPlayer";
 import { api } from "@/lib/api-client";
 import type { ExerciseVideo } from "@/lib/data";
+import { FilePicker } from "@/components/FilePicker";
 import { MAX_VIDEO_MB } from "@/lib/exercise-video-constants";
+import { readFileAsDataUrl } from "@/lib/file-upload";
 
 export function ExerciseVideoLibrary({ videos }: { videos: ExerciseVideo[] }) {
   const router = useRouter();
@@ -19,17 +21,20 @@ export function ExerciseVideoLibrary({ videos }: { videos: ExerciseVideo[] }) {
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
 
-  function onVideoSelect(f: File | null) {
-    if (!f) return;
+  async function onVideoSelect(file: File) {
     setError("");
-    if (f.size > MAX_VIDEO_MB * 1024 * 1024) {
+    if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
       setError(`Video must be under ${MAX_VIDEO_MB}MB`);
       return;
     }
-    setFileName(f.name);
-    const reader = new FileReader();
-    reader.onload = () => setVideoFile(reader.result as string);
-    reader.readAsDataURL(f);
+    setFileName(file.name);
+    try {
+      setVideoFile(await readFileAsDataUrl(file));
+    } catch {
+      setError("Could not read video file");
+      setFileName("");
+      setVideoFile("");
+    }
   }
 
   async function uploadVideo(e: React.FormEvent) {
@@ -70,7 +75,7 @@ export function ExerciseVideoLibrary({ videos }: { videos: ExerciseVideo[] }) {
     <div className="space-y-8">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold uppercase tracking-wide text-white">
-          <Video className="h-6 w-6 text-[#a3e635]" />
+          <Video className="h-6 w-6 text-[#6B93B8]" />
           Exercise Video Library
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -106,20 +111,19 @@ export function ExerciseVideoLibrary({ videos }: { videos: ExerciseVideo[] }) {
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">
               <FieldLabel>Video File</FieldLabel>
-              <label className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 border border-zinc-700 bg-black text-sm text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white">
+              <FilePicker
+                accept="video/*"
+                disabled={adding}
+                onFile={onVideoSelect}
+                className="flex h-12 w-full items-center justify-center gap-2 border border-zinc-700 bg-black text-sm text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 <Upload className="h-4 w-4" />
                 {fileName || "Choose Video File"}
-                <input
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={(e) => onVideoSelect(e.target.files?.[0] ?? null)}
-                />
-              </label>
+              </FilePicker>
             </div>
             <Button
               type="submit"
-              className="h-12 gap-2 bg-[#a3e635] px-8 text-black hover:bg-[#bef264]"
+              className="h-12 gap-2 bg-[#6B93B8] px-8 text-white hover:bg-[#5a82a7]"
               disabled={adding || !videoFile}
             >
               <Upload className="h-4 w-4" />
@@ -160,7 +164,7 @@ export function ExerciseVideoLibrary({ videos }: { videos: ExerciseVideo[] }) {
                     {v.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#a3e635]"
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#6B93B8]"
                       >
                         <Tag className="h-3 w-3" />
                         {tag}

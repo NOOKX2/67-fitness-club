@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck, FileText } from "lucide-react";
-import Link from "next/link";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ChatComposer, ChatMessageList } from "@/components/chat/ChatUI";
 import { CoachWeeklyReportsModal } from "@/components/CoachWeeklyReportsModal";
 import { markChatNotificationsRead } from "@/components/NotificationBell";
+import { useLanguage } from "@/components/LanguageProvider";
 import { api } from "@/lib/api-client";
 import { clientCard } from "@/lib/client-ui";
 import type { Coach, Message, WeeklyReport } from "@/lib/data";
@@ -15,20 +15,19 @@ import { cn } from "@/lib/utils";
 
 export function CoachClient({
   userId,
-  tierLevel,
   coaches,
   coachId,
   initialMessages,
   initialReports,
 }: {
   userId: string;
-  tierLevel: string;
   coaches: Coach[];
   coachId: string;
   initialMessages: Message[];
   initialReports: WeeklyReport[];
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [content, setContent] = useState("");
   const [attachment, setAttachment] = useState("");
   const [reportsOpen, setReportsOpen] = useState(false);
@@ -108,9 +107,9 @@ export function CoachClient({
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white sm:text-base">{coachName}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#5BAD8F] sm:text-xs">
-              <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[#5BAD8F]" />
-              Online
+            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#6B93B8] sm:text-xs">
+              <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[#6B93B8]" />
+              {t("common.online")}
             </p>
           </div>
         </div>
@@ -120,31 +119,17 @@ export function CoachClient({
             variant="outline"
             className="relative h-9 w-9 px-0 sm:w-auto sm:px-3 sm:text-[10px]"
             onClick={() => setReportsOpen(true)}
-            aria-label="Report from Coach"
-            title="Report from Coach"
+            aria-label={t("coach.reportFromCoach")}
+            title={t("coach.reportFromCoach")}
           >
             <FileText className="h-4 w-4 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
-            <span className="hidden sm:inline">Report from Coach</span>
+            <span className="hidden sm:inline">{t("coach.reportFromCoach")}</span>
             {reportCount > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a3e635] px-1 text-[9px] font-bold text-black">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#6B93B8] px-1 text-[9px] font-bold text-white">
                 {reportCount > 9 ? "9+" : reportCount}
               </span>
             ) : null}
           </Button>
-          {tierLevel === "Tier 3" && (
-            <Link href="/profile">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 w-9 px-0 sm:w-auto sm:px-3 sm:text-[10px]"
-                aria-label="Form Check"
-                title="Form Check"
-              >
-                <ClipboardCheck className="h-4 w-4 sm:mr-1.5 sm:h-3.5 sm:w-3.5" />
-                <span className="hidden sm:inline">Form Check</span>
-              </Button>
-            </Link>
-          )}
         </div>
       </div>
 
@@ -161,7 +146,7 @@ export function CoachClient({
         peerAvatarUrl={coach?.profile_image_url}
         peerLabel={coachName}
         peerInitials={initials}
-        emptyHint="Send a message to your coach — they usually reply within a few hours."
+        emptyHint={t("coach.emptyHint")}
       />
 
       {attachment && (
@@ -170,15 +155,15 @@ export function CoachClient({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={attachment} alt="Preview" className="h-12 w-12 rounded-lg object-cover sm:h-14 sm:w-14" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-white">Image attached</p>
-              <p className="text-[10px] text-white/45">Ready to send</p>
+              <p className="text-xs font-medium text-white">{t("coach.imageAttached")}</p>
+              <p className="text-[10px] text-white/45">{t("coach.readyToSend")}</p>
             </div>
             <button
               type="button"
               onClick={() => setAttachment("")}
               className="text-xs text-white/45 hover:text-white"
             >
-              Remove
+              {t("common.remove")}
             </button>
           </div>
         </div>
@@ -191,8 +176,8 @@ export function CoachClient({
         onSend={send}
         onAttach={onAttach}
         canSend={Boolean(content.trim() || attachment) && !sending}
-        sendLabel={sending ? "Sending…" : "Send"}
-        placeholder="Message your coach…"
+        sendLabel={sending ? t("common.sending") : t("common.send")}
+        placeholder={t("coach.messagePlaceholder")}
       />
     </div>
   );

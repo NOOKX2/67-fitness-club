@@ -80,7 +80,7 @@ export function NutritionReview({
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold uppercase tracking-wide text-white">
-          <Apple className="h-6 w-6 text-[#a3e635]" />
+          <Apple className="h-6 w-6 text-[#6B93B8]" />
           Nutrition Review
         </h1>
         <p className="mt-1 text-sm text-zinc-500">Review client nutrition intake</p>
@@ -128,7 +128,7 @@ export function NutritionReview({
               <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
                 Total Meals
               </p>
-              <p className="mt-1 text-3xl font-bold text-[#a3e635]">{meals.length}</p>
+              <p className="mt-1 text-3xl font-bold text-[#6B93B8]">{meals.length}</p>
             </div>
           </div>
 
@@ -204,7 +204,7 @@ export function NutritionReview({
                                 className={cn(
                                   "flex h-10 w-10 items-center justify-center border text-sm font-bold transition-colors",
                                   ratings[m.id] === score
-                                    ? "border-[#a3e635] bg-[#a3e635] text-black"
+                                    ? "border-[#6B93B8] bg-[#6B93B8] text-white"
                                     : "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
                                 )}
                               >
@@ -289,7 +289,7 @@ export function NutritionReview({
                         </div>
                         <Button
                           type="button"
-                          className="h-9 gap-2 bg-[#a3e635] text-xs text-black"
+                          className="h-9 gap-2 bg-[#6B93B8] text-xs text-white"
                           onClick={() => saveReview(m.id)}
                           disabled={savingId === m.id}
                         >
@@ -300,7 +300,7 @@ export function NutritionReview({
                           <p
                             className={`text-sm ${
                               messages[m.id] === "Review saved"
-                                ? "text-[#a3e635]"
+                                ? "text-[#6B93B8]"
                                 : "text-red-400"
                             }`}
                           >

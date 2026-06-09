@@ -8,6 +8,10 @@ import { getDb } from "./db";
 import { progressPhotoStreamPath, readProgressPhotoAsDataUrl } from "./progress-photo-storage";
 import { averageMealRating } from "./nutrition-utils";
 import {
+  computeProgressJourneyStats,
+  type ProgressJourneyStats as JourneyStats,
+} from "./progress-journey";
+import {
   ensureCoaches,
   serializeCoach,
 } from "./coach-utils";
@@ -69,12 +73,18 @@ export type WorkoutDay = {
   cardio?: ProgramCardio | null;
 };
 
+export type WorkoutSetEntry = {
+  weight: string;
+  reps: string;
+};
+
 export type WorkoutLog = {
   id?: string;
   exercise_id: string;
   exercise_name?: string;
   actual_weight: string;
   actual_reps: string;
+  sets?: WorkoutSetEntry[];
   timestamp?: string;
 };
 
@@ -145,7 +155,10 @@ export type AdminClient = {
   gender?: string | null;
   access_starts_at?: string | null;
   access_expires_at?: string | null;
+  tdee?: number | null;
 };
+
+export type { ProgressJourneyStats } from "./progress-journey";
 
 export type AdminActivity = {
   name: string;
@@ -167,10 +180,16 @@ export type FormCheckSubmission = {
   id: string;
   user_id: string;
   user_name?: string;
+  exercise_id?: string;
   exercise_name?: string;
+  week?: number;
+  day?: number;
   video_base64?: string;
+  video_file_id?: string;
+  feedback_text?: string;
   status: string;
   submitted_at?: string;
+  reviewed_at?: string;
 };
 
 export type ExerciseVideo = {
@@ -480,10 +499,17 @@ export async function getWorkoutPageData(
 
   const logs: Record<string, WorkoutLog> = {};
   for (const l of logDocs) {
+    const sets = Array.isArray(l.sets)
+      ? (l.sets as WorkoutSetEntry[]).map((set) => ({
+          weight: String(set.weight ?? ""),
+          reps: String(set.reps ?? ""),
+        }))
+      : undefined;
     logs[String(l.exercise_id)] = {
       exercise_id: String(l.exercise_id),
       actual_weight: String(l.actual_weight ?? ""),
       actual_reps: String(l.actual_reps ?? ""),
+      sets: sets?.length ? sets : undefined,
     };
   }
 
@@ -671,7 +697,74 @@ export async function getAdminClients(): Promise<AdminClient[]> {
     access_expires_at: normalizeDateOnly(
       c.access_expires_at ? String(c.access_expires_at) : null
     ),
+    tdee: c.tdee != null && c.tdee !== "" ? Number(c.tdee) : null,
   }));
+}
+
+export async function getUserTdee(userId: string): Promise<number | null> {
+  const db = await getDb();
+  const user = await db
+    .collection("users")
+    .findOne({ _id: new ObjectId(userId) }, { projection: { tdee: 1 } });
+  if (user?.tdee == null || user.tdee === "") return null;
+  const value = Number(user.tdee);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export async function getProgressJourneyStats(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<JourneyStats> {
+  const db = await getDb();
+  const tdee = await getUserTdee(userId);
+  const start = normalizeDateOnly(startDate) ?? startDate;
+  const end = normalizeDateOnly(endDate) ?? endDate;
+  const [rangeStart, rangeEnd] = start <= end ? [start, end] : [end, start];
+  const { start: queryStart } = localDayRange(rangeStart);
+  const { end: queryEnd } = localDayRange(rangeEnd);
+
+  const [workoutLogs, meals] = await Promise.all([
+    db
+      .collection("workout_logs")
+      .find({
+        user_id: userId,
+        timestamp: { $gte: queryStart, $lt: queryEnd },
+      })
+      .project({ _id: 0, actual_reps: 1, sets: 1, timestamp: 1 })
+      .toArray(),
+    db
+      .collection("meal_submissions_v2")
+      .find({
+        user_id: userId,
+        submitted_at: { $gte: queryStart, $lt: queryEnd },
+        coach_reviewed: true,
+      })
+      .project({ _id: 0, protein: 1, carbs: 1, fat: 1, submitted_at: 1 })
+      .toArray(),
+  ]);
+
+  return computeProgressJourneyStats({
+    tdee,
+    startDate: rangeStart,
+    endDate: rangeEnd,
+    workoutLogs: workoutLogs.map((log) => ({
+      actual_reps: String(log.actual_reps ?? ""),
+      sets: Array.isArray(log.sets)
+        ? (log.sets as Array<{ reps?: string }>).map((set) => ({
+            weight: "",
+            reps: String(set.reps ?? ""),
+          }))
+        : undefined,
+      timestamp: log.timestamp ? String(log.timestamp) : undefined,
+    })),
+    meals: meals.map((meal) => ({
+      protein: meal.protein != null ? Number(meal.protein) : undefined,
+      carbs: meal.carbs != null ? Number(meal.carbs) : undefined,
+      fat: meal.fat != null ? Number(meal.fat) : undefined,
+      submitted_at: meal.submitted_at ? String(meal.submitted_at) : undefined,
+    })),
+  });
 }
 
 export async function getPendingLifts(): Promise<PendingLift[]> {
@@ -698,7 +791,36 @@ export async function getPendingFormChecks(): Promise<FormCheckSubmission[]> {
   const subs = await db
     .collection("form_checks")
     .find({ status: "pending" })
-    .project({ _id: 0 })
+    .project({ _id: 0, video_base64: 0 })
+    .toArray();
+  return subs as FormCheckSubmission[];
+}
+
+export async function getFormChecksForUserWeekDay(
+  userId: string,
+  week: number,
+  day: number
+): Promise<FormCheckSubmission[]> {
+  const db = await getDb();
+  const subs = await db
+    .collection("form_checks")
+    .find({ user_id: userId, week, day })
+    .project({ _id: 0, video_base64: 0 })
+    .toArray();
+  return subs as FormCheckSubmission[];
+}
+
+export async function getClientFormChecks(
+  userId: string,
+  week: number,
+  day: number
+): Promise<FormCheckSubmission[]> {
+  const db = await getDb();
+  const subs = await db
+    .collection("form_checks")
+    .find({ user_id: userId, week, day })
+    .project({ _id: 0, video_base64: 0 })
+    .sort({ submitted_at: -1 })
     .toArray();
   return subs as FormCheckSubmission[];
 }
@@ -824,6 +946,12 @@ export async function getClientWorkoutLogs(
       exercise_name: nameById.get(exerciseId),
       actual_weight: String(l.actual_weight ?? ""),
       actual_reps: String(l.actual_reps ?? ""),
+      sets: Array.isArray(l.sets)
+        ? (l.sets as WorkoutSetEntry[]).map((set) => ({
+            weight: String(set.weight ?? ""),
+            reps: String(set.reps ?? ""),
+          }))
+        : undefined,
       timestamp: l.timestamp ? String(l.timestamp) : undefined,
     });
   }

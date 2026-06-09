@@ -144,7 +144,7 @@ function FriendChatPanel({
           </p>
         </div>
         {chatUnlocked ? (
-          <span className="rounded-full bg-[#5BAD8F]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#5BAD8F]">
+          <span className="rounded-full bg-[#6B93B8]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#6B93B8]">
             Unlocked
           </span>
         ) : (
@@ -408,7 +408,7 @@ export function FriendsSection({
                     </p>
                   </div>
                   {friend.chat_unlocked ? (
-                    <MessageCircle className="h-4 w-4 shrink-0 text-[#5BAD8F]" />
+                    <MessageCircle className="h-4 w-4 shrink-0 text-[#6B93B8]" />
                   ) : (
                     <Lock className="h-4 w-4 shrink-0 text-white/35" />
                   )}

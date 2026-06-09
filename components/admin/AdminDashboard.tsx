@@ -18,8 +18,8 @@ export function AdminDashboard({
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="border border-zinc-800 bg-zinc-950/80 p-5">
           <div className="flex items-start justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#a3e635]/20">
-              <TrendingUp className="h-5 w-5 text-[#a3e635]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6B93B8]/20">
+              <TrendingUp className="h-5 w-5 text-[#6B93B8]" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
               Active

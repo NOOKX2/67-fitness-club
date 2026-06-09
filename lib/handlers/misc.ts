@@ -17,28 +17,112 @@ import {
   saveProfilePhotoToGridFS,
 } from "../profile-photo-storage";
 import { streamFromBase64DataUrl } from "../exercise-video-storage";
-import { respondExerciseVideoStream } from "../video-stream-response";
+import { MAX_FORM_CHECK_VIDEO_BYTES, MAX_FORM_CHECK_VIDEO_MB } from "../form-check-constants";
+import {
+  deleteFormCheckVideoFromGridFS,
+  saveFormCheckVideoToGridFS,
+} from "../form-check-video-storage";
+import { respondExerciseVideoStream, respondFormCheckVideoStream } from "../video-stream-response";
+import { createAdminNotification } from "../admin-notifications";
 
 export async function handleFormChecks(
   req: NextRequest,
   segments: string[]
 ): Promise<Response> {
   try {
+    const db = await getDb();
+
+    if (segments[1] && segments[2] === "stream" && req.method === "GET") {
+      await getCurrentUser(req);
+      const submission = await db.collection("form_checks").findOne({ id: segments[1] });
+      if (!submission) return error("Form check not found", 404);
+
+      const fileId =
+        (submission.video_file_id as string | undefined) ?? String(submission.id);
+      const streamResponse = await respondFormCheckVideoStream(
+        req,
+        db,
+        fileId,
+        submission.video_base64
+      );
+      if (streamResponse) return streamResponse;
+      return error("Video file not found", 404);
+    }
+
     if (segments[1] === "submit" && req.method === "POST") {
       const user = await getCurrentUser(req);
-      if (user.tier_level !== "Tier 3") {
-        return error("Form check submission is only available for Tier 3 members", 403);
+      const body = await parseBody<{
+        exercise_id?: string;
+        exercise_name?: string;
+        week?: number;
+        day?: number;
+        video_base64?: string;
+      }>(req);
+
+      if (!body.exercise_id?.trim()) return error("Exercise is required", 400);
+      if (!body.video_base64?.trim()) return error("Video is required", 400);
+      if (body.week == null || body.day == null) {
+        return error("Week and day are required", 400);
       }
-      const submission = await parseBody<Record<string, unknown>>(req);
+
+      const comma = body.video_base64.indexOf(",");
+      const base64Payload =
+        comma >= 0 ? body.video_base64.slice(comma + 1) : body.video_base64;
+      const byteLength = Buffer.byteLength(base64Payload, "base64");
+      if (byteLength > MAX_FORM_CHECK_VIDEO_BYTES) {
+        return error(`Video must be under ${MAX_FORM_CHECK_VIDEO_MB}MB`, 400);
+      }
+
+      const existing = await db.collection("form_checks").findOne({
+        user_id: user.id,
+        exercise_id: body.exercise_id,
+        week: Number(body.week),
+        day: Number(body.day),
+      });
+
+      const fileId = existing?.video_file_id
+        ? String(existing.video_file_id)
+        : uuidv4();
+
+      if (existing?.video_file_id) {
+        await deleteFormCheckVideoFromGridFS(db, fileId).catch(() => undefined);
+      }
+
+      await saveFormCheckVideoToGridFS(db, fileId, body.video_base64);
+
       const doc = {
-        id: uuidv4(),
-        ...submission,
+        id: existing?.id ? String(existing.id) : uuidv4(),
+        user_id: user.id,
         user_name: user.name,
+        exercise_id: body.exercise_id,
+        exercise_name: body.exercise_name?.trim() || "Exercise",
+        week: Number(body.week),
+        day: Number(body.day),
+        video_file_id: fileId,
         submitted_at: new Date().toISOString(),
         status: "pending",
+        feedback_text: "",
+        reviewed_at: null,
       };
-      const db = await getDb();
-      await db.collection("form_checks").insertOne(doc);
+
+      if (existing) {
+        await db.collection("form_checks").updateOne(
+          { id: doc.id },
+          { $set: doc, $unset: { video_base64: "" } }
+        );
+      } else {
+        await db.collection("form_checks").insertOne(doc);
+      }
+
+      await createAdminNotification(db, {
+        type: "form_check",
+        clientId: user.id,
+        clientName: user.name,
+        message: `${doc.exercise_name} · Week ${doc.week}, Day ${doc.day}`,
+        week: doc.week,
+        day: doc.day,
+      });
+
       return json({ message: "Form check submitted successfully", submission: doc });
     }
   } catch (e) {
@@ -120,6 +204,13 @@ export async function handleWeightTracking(
         date: new Date().toISOString(),
       };
       await db.collection("weight_tracking").insertOne(entry);
+      await createAdminNotification(db, {
+        type: "weight",
+        clientId: user.id,
+        clientName: user.name,
+        message: `Logged ${entry.weight} kg`,
+        date: entry.date.slice(0, 10),
+      });
       if (body.height) {
         await db.collection("users").updateOne(
           { _id: new ObjectId(user.id) },
@@ -165,11 +256,23 @@ export async function handleUpdateProfile(req: NextRequest): Promise<Response> {
       name?: string;
       profile_photo_base64?: string;
       profile_image?: string;
+      tdee?: number | string | null;
     }>(req);
     const db = await getDb();
     const update: Record<string, unknown> = {};
 
     if (body.name?.trim()) update.name = body.name.trim();
+    if (body.tdee !== undefined) {
+      if (body.tdee === null || body.tdee === "") {
+        update.tdee = null;
+      } else {
+        const value = Number(body.tdee);
+        if (!Number.isFinite(value) || value <= 0) {
+          return error("TDEE must be a positive number", 400);
+        }
+        update.tdee = Math.round(value);
+      }
+    }
 
     const photoData = body.profile_photo_base64 ?? body.profile_image;
     if (photoData?.trim()) {
@@ -195,6 +298,10 @@ export async function handleUpdateProfile(req: NextRequest): Promise<Response> {
     return json({
       message: "Profile updated successfully",
       name: updated?.name ?? user.name,
+      tdee:
+        updated?.tdee != null && updated.tdee !== ""
+          ? Number(updated.tdee)
+          : null,
       profile_photo_url: profilePhotoId
         ? profilePhotoStreamPath(profilePhotoId)
         : typeof updated?.profile_image === "string"
@@ -326,6 +433,15 @@ export async function handleProgress(
       return error("Photo file not found", 404);
     }
 
+    if (segments[1] === "journey" && req.method === "GET") {
+      const start = req.nextUrl.searchParams.get("start");
+      const end = req.nextUrl.searchParams.get("end");
+      if (!start || !end) return error("start and end dates are required", 400);
+      const { getProgressJourneyStats } = await import("../data");
+      const stats = await getProgressJourneyStats(user.id, start, end);
+      return json(stats);
+    }
+
     if (segments[1] === "photo" && req.method === "POST") {
       const photo = await parseBody<{
         user_id: string;
@@ -349,6 +465,13 @@ export async function handleProgress(
         date: new Date().toISOString(),
       };
       await db.collection("progress_photos").insertOne(doc);
+      await createAdminNotification(db, {
+        type: "progress_photo",
+        clientId: user.id,
+        clientName: user.name,
+        message: doc.weight != null ? `Progress photo · ${doc.weight} kg` : "New progress photo",
+        date: doc.date.slice(0, 10),
+      });
       return json({ ...doc, photo_url: progressPhotoStreamPath(photoId) });
     }
 
@@ -419,6 +542,12 @@ export async function handleLiftProgress(
       } else {
         await db.collection("lift_progress").insertOne(doc);
       }
+      await createAdminNotification(db, {
+        type: "lift_pr",
+        clientId: lift.user_id,
+        clientName: userDoc?.name ? String(userDoc.name) : "Client",
+        message: `${lift.exercise_name} · ${lift.weight_lifted} kg`,
+      });
       return json(doc);
     }
 
